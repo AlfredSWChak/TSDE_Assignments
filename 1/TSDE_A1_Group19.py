@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from scipy.stats import norm
 
 # Question 1
 
@@ -11,9 +12,6 @@ def autoRegressiveProcess(phi, time, whiteNoise):
 
     for i in range(1,time):
         x_t[i] = x_t[i-1] * phi + whiteNoise[i]
-
-    # print(whiteNoise[:10])
-    # print(x_t[:10])
 
     time_plt = np.arange(0,time,1)
     
@@ -66,7 +64,7 @@ def sacf(input_data, lag, graphTitle, fileName):
     
     lags = np.arange(1,lag+1,1)
     
-    plt.bar(lags, result, color='red')
+    plt.bar(lags, result, color='red', edgecolor='black')
     plt.title(graphTitle)
     plt.savefig(f'../1/figures/{fileName}.jpeg', dpi=300)
     plt.show()
@@ -83,12 +81,7 @@ canvasData_sacf = sacf(canvasData_list, input_lags, graphTitle, fileName)
 
 # Question 3
 
-estimate_phi = []
-
-for i in range(1, len(canvasData_sacf)+1):
-    estimate_phi.append(canvasData_sacf[i-1] ** (1/i))
-
-mean_estimate_phi = round(sum(estimate_phi)/len(estimate_phi),3)
+mean_estimate_phi = round(canvasData_sacf[0],3)
 
 print(f'The estimated phi is {mean_estimate_phi}.')
 
@@ -119,7 +112,8 @@ def assumption_check (estimate_residuals, question_number):
     graphTitle = 'Residuals over time'
     fileName = f'{question_number}_res_over_time'
 
-    plt.scatter(t_plt, estimate_residuals, color='red')
+    plt.plot(estimate_residuals, linewidth=0.8)
+    plt.axhline(0, color='blue', linestyle='--', linewidth=1)
     plt.title(graphTitle)
     plt.savefig(f'../1/figures/{fileName}.jpeg', dpi=300)
     plt.show()
@@ -129,20 +123,27 @@ def assumption_check (estimate_residuals, question_number):
     graphTitle = 'Histogram of the residuals'
     fileName = f'{question_number}_hist_res'
 
-    plt.hist(estimate_residuals, color='red')
+    plt.hist(estimate_residuals, color='red', edgecolor='black')
     plt.title(graphTitle)
     plt.savefig(f'../1/figures/{fileName}.jpeg', dpi=300)
     plt.show()
 
     # QQ-plot of the residuals
 
-    normal_samples = np.sort(np.random.normal(loc=0, scale=1, size=len(estimate_residuals)))
+    # normal_samples = np.sort(np.random.normal(loc=0, scale=1, size=len(estimate_residuals)))
     sorted_residuals = np.sort(estimate_residuals)
+    
+    normal_quantiles= (np.arange(1, len(sorted_residuals)+1) - 0.5)/ len(sorted_residuals)
+    theoretical = norm.ppf(normal_quantiles)
+    
+    min_val = min(theoretical.min(), sorted_residuals.min())
+    max_val = max(theoretical.max(), sorted_residuals.max())
 
     graphTitle = 'QQ-Plot of residuals vs normal'
     fileName = f'{question_number}_qq_res'
-
-    plt.scatter(normal_samples, sorted_residuals, color='red')
+    
+    plt.scatter(theoretical, sorted_residuals, color='white', edgecolor='black', s=15)
+    plt.plot([min_val, max_val], [min_val, max_val], 'r--', linewidth=1)
     plt.title(graphTitle)
     plt.savefig(f'../1/figures/{fileName}.jpeg', dpi=300)
     plt.show()
@@ -192,8 +193,6 @@ phi_2 = 0.5     # b
 
 autoRegressiveProcess_two(phi_1, phi_2, t, new_whiteNoise)
 
-# Question 6
-
 # Question 7
 
 phi_1 = 0.4      
@@ -222,10 +221,17 @@ def movingAverageProcess(theta, time, whiteNoise):
     graphTitle = f'MA(1) process with theta = {theta}'
     fileName = f'8_MA1_{theta}'
     
-    plt.plot(time_plt, x_t, linewidth = 0.5, color = 'red')
+    plt.figure(figsize=(10,4))
+    plt.plot(time_plt, x_t, linewidth=0.5, color='blue')
     plt.title(graphTitle)
     plt.savefig(f'../1/figures/{fileName}.jpeg', dpi=300)
     plt.show()
+    
+    input_lags = 20
+    graphTitle = f'SACF of MA(1) process with theta = {theta}'
+    fileName = f'8_MA1_sacf_{theta}'
+    
+    sacf(x_t, input_lags, graphTitle, fileName)
 
 t = 1000
 
@@ -239,5 +245,3 @@ movingAverageProcess(theta_1, t, new_whiteNoise)
 theta_1 = 2     # b
     
 movingAverageProcess(theta_1, t, new_whiteNoise)
-
-# Question 9
