@@ -19,8 +19,11 @@ def autoRegressiveProcess(phi, time, whiteNoise):
     fileName = f'1_AR1_phi_{phi}'
     
     plt.figure(figsize=(10,4))
-    plt.plot(time_plt, x_t, linewidth = 0.5, color = 'red')
-    plt.title(graphTitle)
+    plt.plot(time_plt, x_t, linewidth = 0.5, color = 'blue')
+    plt.axhline(0, color='black', linestyle='--', linewidth=1)
+    plt.title(graphTitle, fontweight='bold')
+    plt.xlabel('Time')
+    plt.ylabel('X_t')
     plt.savefig(f'../1/figures/{fileName}.jpeg', dpi=300)
     plt.show()
 
@@ -51,8 +54,11 @@ graphTitle = 'Data set from Canvas'
 fileName = f'2_data_from_canvas'
 
 plt.figure(figsize=(10,4))    
-plt.plot(canvasData.index, canvasData, linewidth = 0.5, color = 'red')
-plt.title(graphTitle)
+plt.plot(canvasData.index, canvasData, linewidth = 0.5, color = 'blue')
+plt.axhline(0, color='black', linestyle='--', linewidth=1)
+plt.title(graphTitle, fontweight='bold')
+plt.xlabel('Time')
+plt.ylabel('X_t')
 plt.savefig(f'../1/figures/{fileName}.jpeg', dpi=300)
 plt.show()
 
@@ -67,8 +73,11 @@ def sacf(input_data, lag, graphTitle, fileName):
     lags = np.arange(1,lag+1,1)
     
     plt.figure(figsize=(10,4))
-    plt.bar(lags, result, color='red', edgecolor='black')
-    plt.title(graphTitle)
+    plt.bar(lags, result, color='blue', edgecolor='black')
+    plt.axhline(0, color='black', linestyle='--', linewidth=1)
+    plt.title(graphTitle, fontweight='bold')
+    plt.xlabel('Lag')
+    plt.ylabel('ACF')
     plt.savefig(f'../1/figures/{fileName}.jpeg', dpi=300)
     plt.show()
     
@@ -115,9 +124,11 @@ def assumption_check (estimate_residuals, question_number):
     graphTitle = 'Residuals over time'
     fileName = f'{question_number}_res_over_time'
 
-    plt.plot(estimate_residuals, linewidth=0.8)
-    plt.axhline(0, color='blue', linestyle='--', linewidth=1)
-    plt.title(graphTitle)
+    plt.plot(estimate_residuals, color='blue', linewidth=0.8)
+    plt.axhline(0, color='black', linestyle='--', linewidth=1)
+    plt.title(graphTitle, fontweight='bold')
+    plt.xlabel('Time')
+    plt.ylabel('Residuals')
     plt.savefig(f'../1/figures/{fileName}.jpeg', dpi=300)
     plt.show()
 
@@ -126,8 +137,10 @@ def assumption_check (estimate_residuals, question_number):
     graphTitle = 'Histogram of the residuals'
     fileName = f'{question_number}_hist_res'
 
-    plt.hist(estimate_residuals, color='red', edgecolor='black')
-    plt.title(graphTitle)
+    plt.hist(estimate_residuals, color='blue', edgecolor='black')
+    plt.title(graphTitle, fontweight='bold')
+    plt.xlabel('Residuals')
+    plt.ylabel('Frequency')
     plt.savefig(f'../1/figures/{fileName}.jpeg', dpi=300)
     plt.show()
 
@@ -146,8 +159,10 @@ def assumption_check (estimate_residuals, question_number):
     fileName = f'{question_number}_qq_res'
     
     plt.scatter(theoretical, sorted_residuals, color='white', edgecolor='black', s=15)
-    plt.plot([min_val, max_val], [min_val, max_val], 'r--', linewidth=1)
-    plt.title(graphTitle)
+    plt.plot([min_val, max_val], [min_val, max_val], 'b--', linewidth=1)
+    plt.title(graphTitle, fontweight='bold')
+    plt.xlabel('Theoretical distribution')
+    plt.ylabel('Sample distribution')
     plt.savefig(f'../1/figures/{fileName}.jpeg', dpi=300)
     plt.show()
 
@@ -177,8 +192,12 @@ def autoRegressiveProcess_two(phi_1, phi_2, time, whiteNoise):
     fileName = f'5_AR2_phi_{phi_1}_{phi_2}'
     
     plt.figure(figsize=(10,4))
-    plt.plot(time_plt, x_t, linewidth = 0.5, color = 'red')
-    plt.title(graphTitle)
+    plt.plot(time_plt, x_t, linewidth = 0.5, color = 'blue')
+    plt.axhline(0, color='black', linestyle='--', linewidth=1)
+    plt.title(graphTitle, fontweight='bold')
+    plt.xlabel('Time')
+    plt.ylabel('X_t')
+    plt.ylim(-20, 20)
     plt.savefig(f'../1/figures/{fileName}.jpeg', dpi=300)
     plt.show()
 
@@ -227,7 +246,11 @@ def movingAverageProcess(theta, time, whiteNoise):
     
     plt.figure(figsize=(10,4))
     plt.plot(time_plt, x_t, linewidth=0.5, color='blue')
-    plt.title(graphTitle)
+    plt.axhline(0, color='black', linestyle='--', linewidth=1)
+    plt.title(graphTitle, fontweight='bold')
+    plt.xlabel('Time')
+    plt.ylabel('X_t')
+    plt.ylim(-8, 8)
     plt.savefig(f'../1/figures/{fileName}.jpeg', dpi=300)
     plt.show()
     
