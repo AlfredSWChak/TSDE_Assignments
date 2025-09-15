@@ -18,6 +18,7 @@ def autoRegressiveProcess(phi, time, whiteNoise):
     graphTitle = f'Gaussian AR(1) process with phi = {phi}'
     fileName = f'1_AR1_phi_{phi}'
     
+    plt.figure(figsize=(10,4))
     plt.plot(time_plt, x_t, linewidth = 0.5, color = 'red')
     plt.title(graphTitle)
     plt.savefig(f'../1/figures/{fileName}.jpeg', dpi=300)
@@ -48,7 +49,8 @@ canvasData = read_csv('../1/data_tsde_assignment_1.csv')
 
 graphTitle = 'Data set from Canvas'
 fileName = f'2_data_from_canvas'
-    
+
+plt.figure(figsize=(10,4))    
 plt.plot(canvasData.index, canvasData, linewidth = 0.5, color = 'red')
 plt.title(graphTitle)
 plt.savefig(f'../1/figures/{fileName}.jpeg', dpi=300)
@@ -64,6 +66,7 @@ def sacf(input_data, lag, graphTitle, fileName):
     
     lags = np.arange(1,lag+1,1)
     
+    plt.figure(figsize=(10,4))
     plt.bar(lags, result, color='red', edgecolor='black')
     plt.title(graphTitle)
     plt.savefig(f'../1/figures/{fileName}.jpeg', dpi=300)
@@ -173,6 +176,7 @@ def autoRegressiveProcess_two(phi_1, phi_2, time, whiteNoise):
     graphTitle = f'Gaussian AR(2) process with phi_1 = {phi_1} and phi_2 = {phi_2}'
     fileName = f'5_AR2_phi_{phi_1}_{phi_2}'
     
+    plt.figure(figsize=(10,4))
     plt.plot(time_plt, x_t, linewidth = 0.5, color = 'red')
     plt.title(graphTitle)
     plt.savefig(f'../1/figures/{fileName}.jpeg', dpi=300)
