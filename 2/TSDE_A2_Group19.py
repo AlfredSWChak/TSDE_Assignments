@@ -101,18 +101,53 @@ def runRegressionModel(input_y, input_p):
     matrix_X = generateMatrixX(input_y, input_p)
     
     # calculate estimated beta by (X′ * X)^{−1} * X′* y
-    result = getEstimatedBeta(matrix_X, vector_y)
+    estimate_beta = getEstimatedBeta(matrix_X, vector_y)
 
-    return result
+    # calculate estimated y by X * (estimated beta)
+    estimate_y = matrix_X @ estimate_beta
+    
+    # calculate the residuals
+    residuals = vector_y - estimate_y
+    
+    temp_df = matrix_X.copy()
+    temp_df['y'] = vector_y
+    temp_df['hat_y'] = estimate_y
+    temp_df['res'] = residuals
+    
+    print(temp_df)
+
+    return estimate_beta, estimate_y, residuals
+
+# compute Bayesian information criterion
+def getBIC(t, k, residuals):
+    ssr_k = 0
+    
+    for res in residuals:
+        ssr_k += res ** 2
+    
+    print(ssr_k)
+    
+    bic = t * np.log (ssr_k / t) + k * np.log(t)
+    
+    return bic
 
 max_p = 4
+bic_list = []
 
 # estimate with a maximum p up to 4 lags
 for iterateP in range(1, max_p+1):
     # estimate an AR(p) model with intercept for the given data
-    estimate_phi = runRegressionModel(quarterly_growth_rates, iterateP)
+    estimate_phi, hat_y, hat_residuals = runRegressionModel(quarterly_growth_rates, iterateP)
     
-    print(f'For p = {iterateP},')
-    print(estimate_phi)
+    lengthOfSeries = len(quarterly_growth_rates)
+    k = iterateP + 1
     
-# compute Bayesian information criterion
+    this_bic = getBIC(lengthOfSeries, k, hat_residuals.squeeze())
+    bic_list.append(float(this_bic))
+    
+min_bic = round(np.min(bic_list),3)
+final_p = bic_list.index(np.min(bic_list))
+
+print(f'The final estimate of p is {final_p} with the lowest value of the information criterion which is {min_bic}.')
+
+# Question 3
