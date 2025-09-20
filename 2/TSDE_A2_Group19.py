@@ -1,0 +1,118 @@
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
+def read_csv(filename) -> str:
+    output = pd.read_csv(filename, header = 0)
+    return output
+    
+part1Data = read_csv('../2/data_tsde_assignment_2_part_1.csv')
+part2Data = read_csv('../2/data_tsde_assignment_2_part_2.csv')
+
+# brief review of the data sets
+# print(part1Data)
+# print(part2Data)
+
+# Part I: Forecasting, Parameter Estimation, and Model Selection
+
+# Question 1
+
+quarterly_growth_rates = part1Data['GDP_QGR']
+quarterly_name = part1Data['obs']
+fourth_quarter_name = [quarter for quarter in quarterly_name if 'Q4' in quarter]
+
+graphTitle = 'Dutch GDP quarterly growth rates'
+fileName = '1_gdp'
+
+plt.figure(figsize=(10,4))    
+plt.plot(quarterly_name, quarterly_growth_rates, linewidth = 1, color = 'blue')
+plt.axhline(0, color='black', linestyle='--', linewidth=1)
+plt.title(graphTitle, fontweight='bold')
+plt.xticks(quarterly_name, minor=True)
+plt.xticks(fourth_quarter_name, minor=False, rotation=45)
+plt.grid(True, axis='x', linestyle='--', linewidth=0.5, which='minor', color='grey')
+plt.grid(True, axis='x', linestyle='--', linewidth=0.8, which='major', color='black')
+plt.xlabel('Time')
+plt.ylabel('QGR')
+plt.savefig(f'../2/figures/{fileName}.jpeg', dpi=300)
+plt.show()
+
+def sacf(input_data, lag, graphTitle, fileName):
+    result = []
+    
+    for i in range(1, lag+1):
+        x = pd.Series(input_data)
+        result.append(x.autocorr(lag = i))
+    
+    lags = np.arange(1,lag+1,1)
+    
+    plt.figure(figsize=(10,4))
+    plt.bar(lags, result, color='blue', edgecolor='black')
+    plt.axhline(0, color='black', linestyle='--', linewidth=1)
+    plt.title(graphTitle, fontweight='bold')
+    plt.xlabel('Lag')
+    plt.ylabel('ACF')
+    plt.savefig(f'../2/figures/{fileName}.jpeg', dpi=300)
+    plt.show()
+    
+    return result
+
+input_lags = 12
+
+graphTitle = 'Sample ACF of Dutch GDP quarterly growth rates'
+fileName = '1_sacf'
+
+gdp_sacf = sacf(quarterly_growth_rates, input_lags, graphTitle, fileName)
+
+# Question 2
+
+def generateMatrixX(input_y, p):
+    numberOfRows = len(input_y) - p
+    result_matrix = []
+    
+    for rowNumber in range(0,numberOfRows):
+        row = []
+        row.append(1)
+        
+        for t in range(0, p):
+            row.append(input_y[p + rowNumber - t - 1])
+    
+        result_matrix.append(row)
+     
+    return pd.DataFrame(result_matrix)
+
+def getEstimatedBeta(input_matrix_X, input_vector_y):
+    # calculate the inverse matrix (X′ * X)^{−1}
+    df = input_matrix_X.T @ input_matrix_X
+    df_inv = pd.DataFrame(np.linalg.inv(df.values),
+                      index=df.columns,   # rows = original columns
+                      columns=df.index) 
+    
+    # calculate estimated beta by (X′ * X)^{−1} * X′* y
+    result_beta = df_inv @ input_matrix_X.T @ input_vector_y
+    
+    return result_beta
+
+def runRegressionModel(input_y, input_p):
+    # convert y to matrix y
+    vector_y = pd.DataFrame(input_y[input_p:])
+    vector_y = vector_y.reset_index(drop=True)
+    # convert y to matrix X
+    matrix_X = generateMatrixX(input_y, input_p)
+    
+    # calculate estimated beta by (X′ * X)^{−1} * X′* y
+    result = getEstimatedBeta(matrix_X, vector_y)
+
+    return result
+
+max_p = 4
+
+# estimate with a maximum p up to 4 lags
+for iterateP in range(1, max_p+1):
+    # estimate an AR(p) model with intercept for the given data
+    estimate_phi = runRegressionModel(quarterly_growth_rates, iterateP)
+    
+    print(f'For p = {iterateP},')
+    print(estimate_phi)
+    
+# compute Bayesian information criterion
