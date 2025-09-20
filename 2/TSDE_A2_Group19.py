@@ -114,7 +114,7 @@ def runRegressionModel(input_y, input_p):
     temp_df['hat_y'] = estimate_y
     temp_df['res'] = residuals
     
-    print(temp_df)
+    # print(temp_df)
 
     return estimate_beta, estimate_y, residuals
 
@@ -125,13 +125,12 @@ def getBIC(t, k, residuals):
     for res in residuals:
         ssr_k += res ** 2
     
-    print(ssr_k)
-    
-    bic = t * np.log (ssr_k / t) + k * np.log(t)
+    bic = t * np.log(ssr_k/t) + k * np.log(t)
     
     return bic
 
 max_p = 4
+estimate_phi_list = []
 bic_list = []
 
 # estimate with a maximum p up to 4 lags
@@ -143,11 +142,43 @@ for iterateP in range(1, max_p+1):
     k = iterateP + 1
     
     this_bic = getBIC(lengthOfSeries, k, hat_residuals.squeeze())
+    estimate_phi_list.append(estimate_phi)
     bic_list.append(float(this_bic))
     
 min_bic = round(np.min(bic_list),3)
-final_p = bic_list.index(np.min(bic_list))
+final_p = bic_list.index(np.min(bic_list)) + 1
 
 print(f'The final estimate of p is {final_p} with the lowest value of the information criterion which is {min_bic}.')
 
 # Question 3
+
+# produce forecasts up to 2 years ahead
+final_phi = estimate_phi_list[final_p - 1]
+h_step_ahead = 8
+
+for step in range(1,h_step_ahead+1):
+    row = []
+    row.append(1)
+    
+    for t in range(0, final_p):
+        row.append(float(quarterly_growth_rates[len(quarterly_growth_rates) - t - 1]))
+    
+    forecast_result = (pd.DataFrame([row]) @ final_phi)
+    quarterly_growth_rates = pd.concat([quarterly_growth_rates, pd.Series([forecast_result.iloc[0, 0]])], ignore_index=True)
+
+graphTitle = 'Dutch GDP quarterly growth rates forecasts up to 2 years ahead'
+fileName = '3_forecasts'
+
+plt.figure(figsize=(10,4))    
+plt.plot(range(len(quarterly_growth_rates)-8), quarterly_growth_rates[:-8], linewidth = 1, color = 'blue')
+plt.plot(range(len(quarterly_growth_rates)-9,len(quarterly_growth_rates)),quarterly_growth_rates[-9:], linewidth = 1, color = 'red')
+plt.axhline(0, color='black', linestyle='--', linewidth=1)
+plt.title(graphTitle, fontweight='bold')
+# plt.xticks(quarterly_name, minor=True)
+# plt.xticks(fourth_quarter_name, minor=False, rotation=45)
+# plt.grid(True, axis='x', linestyle='--', linewidth=0.5, which='minor', color='grey')
+# plt.grid(True, axis='x', linestyle='--', linewidth=0.8, which='major', color='black')
+plt.xlabel('Time')
+plt.ylabel('QGR')
+plt.savefig(f'../2/figures/{fileName}.jpeg', dpi=300)
+plt.show()
