@@ -1,6 +1,8 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from scipy.stats import norm
+import math
 
 def read_csv(filename) -> str:
     output = pd.read_csv(filename, header = 0)
@@ -131,6 +133,7 @@ def getBIC(t, k, residuals):
 
 max_p = 4
 estimate_phi_list = []
+estimate_residuals_list = []
 bic_list = []
 
 # estimate with a maximum p up to 4 lags
@@ -143,6 +146,7 @@ for iterateP in range(1, max_p+1):
     
     this_bic = getBIC(lengthOfSeries, k, hat_residuals.squeeze())
     estimate_phi_list.append(estimate_phi)
+    estimate_residuals_list.append(hat_residuals)
     bic_list.append(float(this_bic))
     
 min_bic = round(np.min(bic_list),3)
@@ -154,7 +158,26 @@ print(f'The final estimate of p is {final_p} with the lowest value of the inform
 
 # produce forecasts up to 2 years ahead
 final_phi = estimate_phi_list[final_p - 1]
+print(f'final_phi = {final_phi.loc[1]}')
+final_residuals = estimate_residuals_list[final_p - 1]
 h_step_ahead = 8
+
+def getQuarterlyName(input_x_list):
+    result = ''
+    lastName = input_x_list[-1]
+    lastYear = lastName[0:4]
+    lastQuarter = lastName[-1]
+    
+    if int(lastQuarter) == 4:
+        thisYear = int(lastYear) + 1
+        thisQuarter = 1
+        result = f'{thisYear}Q{thisQuarter}'
+    else:
+        thisYear = lastYear
+        thisQuarter = int(lastQuarter) + 1
+        result = f'{thisYear}Q{thisQuarter}'
+        
+    return result
 
 for step in range(1,h_step_ahead+1):
     row = []
@@ -163,21 +186,72 @@ for step in range(1,h_step_ahead+1):
     for t in range(0, final_p):
         row.append(float(quarterly_growth_rates[len(quarterly_growth_rates) - t - 1]))
     
-    forecast_result = (pd.DataFrame([row]) @ final_phi)
+    forecast_result = pd.DataFrame([row]) @ final_phi
     quarterly_growth_rates = pd.concat([quarterly_growth_rates, pd.Series([forecast_result.iloc[0, 0]])], ignore_index=True)
+    
+    forecast_result_name = getQuarterlyName(list(quarterly_name))
+    quarterly_name = pd.concat([quarterly_name, pd.Series([forecast_result_name])], ignore_index=True)       
+
+fourth_quarter_name = [quarter for quarter in quarterly_name if 'Q4' in quarter]
 
 graphTitle = 'Dutch GDP quarterly growth rates forecasts up to 2 years ahead'
 fileName = '3_forecasts'
 
 plt.figure(figsize=(10,4))    
-plt.plot(range(len(quarterly_growth_rates)-8), quarterly_growth_rates[:-8], linewidth = 1, color = 'blue')
-plt.plot(range(len(quarterly_growth_rates)-9,len(quarterly_growth_rates)),quarterly_growth_rates[-9:], linewidth = 1, color = 'red')
+plt.plot(quarterly_name[:-8], quarterly_growth_rates[:-8], linewidth = 1, color = 'blue')
+plt.plot(quarterly_name[-9:],quarterly_growth_rates[-9:], linewidth = 1, color = 'red')
 plt.axhline(0, color='black', linestyle='--', linewidth=1)
 plt.title(graphTitle, fontweight='bold')
-# plt.xticks(quarterly_name, minor=True)
-# plt.xticks(fourth_quarter_name, minor=False, rotation=45)
-# plt.grid(True, axis='x', linestyle='--', linewidth=0.5, which='minor', color='grey')
-# plt.grid(True, axis='x', linestyle='--', linewidth=0.8, which='major', color='black')
+plt.xticks(quarterly_name, minor=True)
+plt.xticks(fourth_quarter_name, minor=False, rotation=45)
+plt.grid(True, axis='x', linestyle='--', linewidth=0.5, which='minor', color='grey')
+plt.grid(True, axis='x', linestyle='--', linewidth=0.8, which='major', color='black')
+plt.xlabel('Time')
+plt.ylabel('QGR')
+plt.savefig(f'../2/figures/{fileName}.jpeg', dpi=300)
+plt.show()
+
+# Question 4
+
+# estimate the variance of residuals
+res_variance = np.var(final_residuals)
+
+# compute the variance of error terms
+sumOfPhi = 0
+for j in range(0, h_step_ahead):
+    sumOfPhi += final_phi.loc[1] ** (2*j)
+
+error_h_step_ahead_error_variance = res_variance * sumOfPhi
+print(error_h_step_ahead_error_variance,type(error_h_step_ahead_error_variance))
+
+# compute the confidence interval
+alpha = 0.05
+CI_upper_list = []
+CI_lower_list = []
+CI_upper_list.append(list(quarterly_growth_rates)[-9])
+CI_lower_list.append(list(quarterly_growth_rates)[-9])
+
+for step in range(1,h_step_ahead+1):
+    forecastValue = list(quarterly_growth_rates)[-(h_step_ahead+1-step)]
+    confidenceInterval_upperBound = forecastValue + norm.ppf(1 - alpha/2) * math.sqrt(error_h_step_ahead_error_variance)
+    CI_upper_list.append(confidenceInterval_upperBound)
+    confidenceInterval_lowerBound = forecastValue - norm.ppf(1 - alpha/2) * math.sqrt(error_h_step_ahead_error_variance)
+    CI_lower_list.append(confidenceInterval_lowerBound)
+    
+graphTitle = 'Dutch GDP quarterly growth rates forecasts up to 2 years ahead'
+fileName = '4_forecasts_CI'
+
+plt.figure(figsize=(10,4))    
+plt.plot(quarterly_name[:-8], quarterly_growth_rates[:-8], linewidth = 1, color = 'blue')
+plt.plot(quarterly_name[-9:],quarterly_growth_rates[-9:], linewidth = 1, color = 'red')
+plt.plot(quarterly_name[-9:],CI_upper_list, linestyle = '--', linewidth = 1, color = 'red')
+plt.plot(quarterly_name[-9:],CI_lower_list, linestyle = '--', linewidth = 1, color = 'red')
+plt.axhline(0, color='black', linestyle='--', linewidth=1)
+plt.title(graphTitle, fontweight='bold')
+plt.xticks(quarterly_name, minor=True)
+plt.xticks(fourth_quarter_name, minor=False, rotation=45)
+plt.grid(True, axis='x', linestyle='--', linewidth=0.5, which='minor', color='grey')
+plt.grid(True, axis='x', linestyle='--', linewidth=0.8, which='major', color='black')
 plt.xlabel('Time')
 plt.ylabel('QGR')
 plt.savefig(f'../2/figures/{fileName}.jpeg', dpi=300)
