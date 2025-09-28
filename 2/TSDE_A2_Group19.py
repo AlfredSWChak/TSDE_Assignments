@@ -325,6 +325,9 @@ for iterateP in range(1, max_p+1):
     
     aic_list.append(float(this_aic))
 
+matrixX_list_ADL = []
+estimate_coef_list_ADL = []
+estimate_residuals_list_ADL = []
 aic_list_ADL = []
 
 def generateMatrixX_ADLModel(input_y, input_x, p, q):
@@ -365,13 +368,8 @@ def runRegressionModel_ADL(input_y, input_x, input_p, input_q):
     
     # calculate the residuals
     residuals = vector_y - estimate_y
-    
-    temp_df = matrix_X.copy()
-    temp_df['y'] = vector_y
-    temp_df['hat_y'] = estimate_y
-    temp_df['res'] = residuals
 
-    return estimate_beta, estimate_y, residuals
+    return matrix_X, estimate_beta, estimate_y, residuals
 
 def getBestP_ADL(input_list):
     min_value = round(np.min(input_list),3)
@@ -383,12 +381,14 @@ def getBestP_ADL(input_list):
 for iterateP in range(1, max_p+1):
     for iterateQ in range(1, max_q+1):
         # estimate an AR(p) model with intercept for the given data
-        estimate_phi, hat_y, hat_residuals = runRegressionModel_ADL(quarterly_unemployment_rates, quarterly_growth_rates_part2, iterateP, iterateQ)
+        this_matrix_X, estimate_coef, hat_y, hat_residuals = runRegressionModel_ADL(quarterly_unemployment_rates, quarterly_growth_rates_part2, iterateP, iterateQ)
 
         lengthOfSeries = len(quarterly_unemployment_rates)
         k = iterateP + 1
         this_aic = getAIC(lengthOfSeries, k, hat_residuals.squeeze())
-        
+        matrixX_list_ADL.append(this_matrix_X)
+        estimate_coef_list_ADL.append(estimate_coef)
+        estimate_residuals_list_ADL.append(hat_residuals)
         aic_list_ADL.append(float(this_aic))
 
 # Use AIC for model selection
@@ -397,8 +397,53 @@ min_aic, final_p = getBestP(aic_list)
 print('For AR(p) model of the GDP growth rate:')
 print(f'The final estimate of (p) is {final_p} with the lowest value of the information criterion which is {min_aic}.')
 
-
 min_aic_ADL, final_p_ADL, final_q_ADL = getBestP_ADL(aic_list_ADL)
 
 print('For ADL(p,q) model for the unemployment rate:')
 print(f'The final estimate of (p,q) is ({final_p_ADL},{final_q_ADL}) with the lowest value of the information criterion which is {min_aic_ADL}.')
+
+# Question 2
+# estimate p-values for the estimated coeﬃcients
+aic_index = aic_list_ADL.index(np.min(aic_list_ADL))
+final_coef_ADL = estimate_coef_list_ADL[aic_index]
+final_residuals_ADL = estimate_residuals_list_ADL[aic_index]
+final_matrix_X = matrixX_list_ADL[aic_index]    
+
+# get the shape of the matrix
+n, k = final_matrix_X.shape
+
+# estimate the error variance
+estimated_variance = (final_residuals_ADL.T @ final_residuals_ADL).iat[0, 0] / (n - k)
+
+df = final_matrix_X.T @ final_matrix_X
+df_inv = pd.DataFrame(np.linalg.inv(df.values),
+                    index=df.columns,   # rows = original columns
+                    columns=df.index) 
+
+# compute the variance-covariance matrix
+varCovMatrix = estimated_variance * df_inv
+
+# get the standard errors which are the diagonal element
+estimated_standard_error = np.sqrt(np.diag(varCovMatrix))
+
+# compute t-statistic under the null for all coefficients
+t_list = np.array(final_coef_ADL.squeeze()) / np.array(estimated_standard_error)
+
+# compute the two-sided p-values for all coefficients
+pValue_list = 2 * (1 - norm.cdf(np.abs(t_list)))
+
+# construct a dataframe for review
+coef_t_p_df = pd.DataFrame()
+coef_t_p_df['est_coef'] = final_coef_ADL.squeeze()
+coef_t_p_df['t_statistic'] = t_list
+coef_t_p_df['p_value'] = pValue_list
+
+print(f'The estimated coeﬃcients and p-values are:')
+print(coef_t_p_df)
+
+# Question 3
+# derive the long-run equilibrium relation between the unemployment rate and the GDP growth rate
+
+# Question 4
+# analyze the Dutch unemployment rate in the ‘good scenario’
+# analyze the Dutch unemployment rate in the ‘bad scenario’
