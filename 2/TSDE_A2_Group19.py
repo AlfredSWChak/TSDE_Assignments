@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from scipy.stats import norm
+from scipy.stats import chi2
 import math
 
 def read_csv(filename) -> str:
@@ -284,7 +285,53 @@ plt.show()
 
 # perform Jarque-Bera test: Testing for normality
 
+def getSampleSkewness(input_residuals):
+    mean_res = np.average(input_residuals)
+    sample_var = np.var(input_residuals, ddof=1)
+    skewness = 0
+    
+    for res in input_residuals:
+        skewness += (res - mean_res) ** 3
+        
+    skewness = (skewness / len(input_residuals)) / (np.sqrt(sample_var) ** 3)
+    
+    return skewness
+
+def getSamplekurtosis(input_residuals):
+    mean_res = np.average(input_residuals)
+    sample_var = np.var(input_residuals, ddof=1)
+    kurtosis = 0
+    
+    for res in input_residuals:
+        kurtosis += (res - mean_res) ** 4
+        
+    kurtosis = (kurtosis / len(input_residuals)) / (sample_var ** 2)
+    
+    return kurtosis
+    
+sampleSize = len(quarterly_growth_rates)
+skewness = getSampleSkewness(hat_residuals.squeeze())
+kurtosis = getSamplekurtosis(hat_residuals.squeeze())
+
+# compute JB test statistic
+jb = round((sampleSize - final_p) / 6 * (skewness ** 2 + ((kurtosis - 3) ** 2) / 4),3)
+
+# parameters
+dof = 2     # degrees of freedom
+alpha = 0.95
+
+criticalValue_chi2 = round(chi2.ppf(alpha, dof),3) # critical value under the null
+
+print(f'The JB test statistic is {jb} while the critical value under the null is {criticalValue_chi2}.')
+
+if jb > criticalValue_chi2:
+    print(f'Since {jb} is greater than {criticalValue_chi2}, therefore reject the null.')
+else:
+    print(f'Since {jb} is smaller than {criticalValue_chi2}, therefore does not reject the null.')
+
 # perform Breusch-Godfrey test: Testing for autocorrelation
+
+
 
 '''
 Part II: Impulse Response Functions, Autoregressive Distributed Lag Models, and Granger Causality
