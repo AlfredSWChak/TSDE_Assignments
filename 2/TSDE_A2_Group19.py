@@ -11,10 +11,6 @@ def read_csv(filename) -> str:
 part1Data = read_csv('../2/data_tsde_assignment_2_part_1.csv')
 part2Data = read_csv('../2/data_tsde_assignment_2_part_2.csv')
 
-# brief review of the data sets
-# print(part1Data)
-# print(part2Data)
-
 '''
 Part I: Forecasting, Parameter Estimation, and Model Selection
 '''
@@ -30,7 +26,7 @@ fourth_quarter_name = [quarter for quarter in quarterly_name if 'Q4' in quarter]
 graphTitle = 'Dutch GDP quarterly growth rates'
 fileName = '1_gdp'
 
-plt.figure(figsize=(10,4))    
+plt.figure(figsize=(10,6))    
 plt.plot(quarterly_name, quarterly_growth_rates, linewidth = 1, color = 'blue')
 plt.axhline(0, color='black', linestyle='--', linewidth=1)
 plt.title(graphTitle, fontweight='bold')
@@ -39,7 +35,7 @@ plt.xticks(fourth_quarter_name, minor=False, rotation=45)
 plt.grid(True, axis='x', linestyle='--', linewidth=0.5, which='minor', color='grey')
 plt.grid(True, axis='x', linestyle='--', linewidth=0.8, which='major', color='black')
 plt.xlabel('Time')
-plt.ylabel('QGR')
+plt.ylabel('Growth Rate (%)')
 plt.savefig(f'../2/figures/{fileName}.jpeg', dpi=300)
 plt.show()
 
@@ -52,7 +48,7 @@ def sacf(input_data, lag, graphTitle, fileName):
     
     lags = np.arange(1,lag+1,1)
     
-    plt.figure(figsize=(10,4))
+    plt.figure(figsize=(10,6))
     plt.bar(lags, result, color='blue', edgecolor='black')
     plt.axhline(0, color='black', linestyle='--', linewidth=1)
     plt.title(graphTitle, fontweight='bold')
@@ -133,6 +129,11 @@ def getBIC(t, k, residuals):
     
     return bic
 
+def getBestP(input_list):
+    min_value = round(np.min(input_list),3)
+    final_p = input_list.index(np.min(input_list)) + 1
+    return min_value, final_p
+
 max_p = 4
 estimate_phi_list = []
 estimate_residuals_list = []
@@ -150,17 +151,27 @@ for iterateP in range(1, max_p+1):
     estimate_phi_list.append(estimate_phi)
     estimate_residuals_list.append(hat_residuals)
     bic_list.append(float(this_bic))
-    
-min_bic = round(np.min(bic_list),3)
-final_p = bic_list.index(np.min(bic_list)) + 1
+
+# Use BIC for model selection
+min_bic, final_p = getBestP(bic_list)
+final_phi = estimate_phi_list[final_p - 1]
+final_residuals = estimate_residuals_list[final_p - 1]
+
+coef_df = pd.DataFrame()
+coef_df['coef'] = final_phi
+
+print(coef_df)
+
+p_df = pd.DataFrame()
+p_df['BIC'] = bic_list
+
+print(p_df)
 
 print(f'The final estimate of (p) is {final_p} with the lowest value of the information criterion which is {min_bic}.')
 
 # Question 3
 
 # produce forecasts up to 2 years ahead
-final_phi = estimate_phi_list[final_p - 1]
-final_residuals = estimate_residuals_list[final_p - 1]
 h_step_ahead = 8
 
 def getQuarterlyName(input_x_list):
@@ -198,17 +209,22 @@ fourth_quarter_name = [quarter for quarter in quarterly_name if 'Q4' in quarter]
 graphTitle = 'Dutch GDP quarterly growth rates forecasts up to 2 years ahead'
 fileName = '3_forecasts'
 
-plt.figure(figsize=(10,4))    
-plt.plot(quarterly_name[:-8], quarterly_growth_rates[:-8], linewidth = 1, color = 'blue')
-plt.plot(quarterly_name[-9:],quarterly_growth_rates[-9:], linewidth = 1, color = 'red')
+plt.figure(figsize=(10,6))    
+plt.plot(quarterly_name[:-8], quarterly_growth_rates[:-8], 
+         linewidth = 1, color = 'blue', label='Sample')
+plt.plot(quarterly_name[-9:],quarterly_growth_rates[-9:], 
+         linewidth = 1, color = 'red', label='Forecast')
 plt.axhline(0, color='black', linestyle='--', linewidth=1)
+plt.axvspan(quarterly_name.iloc[-9], quarterly_name.iloc[-1], 
+            color='lightgrey', alpha=0.5) # shade background for forecast period
 plt.title(graphTitle, fontweight='bold')
 plt.xticks(quarterly_name, minor=True)
 plt.xticks(fourth_quarter_name, minor=False, rotation=45)
 plt.grid(True, axis='x', linestyle='--', linewidth=0.5, which='minor', color='grey')
 plt.grid(True, axis='x', linestyle='--', linewidth=0.8, which='major', color='black')
 plt.xlabel('Time')
-plt.ylabel('QGR')
+plt.ylabel('Growth Rate (%)')
+plt.legend()
 plt.savefig(f'../2/figures/{fileName}.jpeg', dpi=300)
 plt.show()
 
@@ -241,19 +257,26 @@ for step in range(1,h_step_ahead+1):
 graphTitle = 'Dutch GDP quarterly growth rates forecasts up to 2 years ahead'
 fileName = '4_forecasts_CI'
 
-plt.figure(figsize=(10,4))    
-plt.plot(quarterly_name[:-8], quarterly_growth_rates[:-8], linewidth = 1, color = 'blue')
-plt.plot(quarterly_name[-9:],quarterly_growth_rates[-9:], linewidth = 1, color = 'red')
-plt.plot(quarterly_name[-9:],CI_upper_list, linestyle = '--', linewidth = 1, color = 'red')
-plt.plot(quarterly_name[-9:],CI_lower_list, linestyle = '--', linewidth = 1, color = 'red')
+plt.figure(figsize=(10,6))    
+plt.plot(quarterly_name[:-8], quarterly_growth_rates[:-8], 
+         linewidth = 1, color = 'blue', label='Sample')
+plt.plot(quarterly_name[-9:],quarterly_growth_rates[-9:], 
+         linewidth = 1, color = 'red', label='Forecast')
+plt.plot(quarterly_name[-9:],CI_upper_list, linestyle = '--', 
+         linewidth = 1, color = 'red')
+plt.plot(quarterly_name[-9:],CI_lower_list, linestyle = '--', 
+         linewidth = 1, color = 'red', label='90% CI')
 plt.axhline(0, color='black', linestyle='--', linewidth=1)
+plt.axvspan(quarterly_name.iloc[-9], quarterly_name.iloc[-1], 
+            color='lightgrey', alpha=0.5) # shade background for forecast period
 plt.title(graphTitle, fontweight='bold')
 plt.xticks(quarterly_name, minor=True)
 plt.xticks(fourth_quarter_name, minor=False, rotation=45)
 plt.grid(True, axis='x', linestyle='--', linewidth=0.5, which='minor', color='grey')
 plt.grid(True, axis='x', linestyle='--', linewidth=0.8, which='major', color='black')
 plt.xlabel('Time')
-plt.ylabel('QGR')
+plt.ylabel('Growth Rate (%)')
+plt.legend()
 plt.savefig(f'../2/figures/{fileName}.jpeg', dpi=300)
 plt.show()
 
@@ -271,11 +294,10 @@ quarterly_name = part2Data['obs']
 fourth_quarter_name = [quarter for quarter in quarterly_name if 'Q4' in quarter]
 
 # Plot the graphs
-
 graphTitle = 'Dutch quarterly unemployment rates with GDP growth rates'
 fileName = '5_unr_gdp'
 
-plt.figure(figsize=(10,4))    
+plt.figure(figsize=(10,6))    
 plt.plot(quarterly_name, quarterly_unemployment_rates, 
          linewidth = 1, color = 'green', label='Unemployment Rate')
 plt.plot(quarterly_name, quarterly_growth_rates_part2, 
@@ -305,14 +327,11 @@ def getAIC(t, k, residuals):
     
     return aic
 
-def getBestP(input_list):
-    min_value = round(np.min(input_list),3)
-    final_p = input_list.index(np.min(input_list)) + 1
-    return min_value, final_p
-
 # Estimate AR model
 max_p = 4  # maximum lags
 max_q = 4  # maximum lags
+estimate_coef_list_AR = []
+estimate_residuals_list_AR = []
 aic_list = []
 
 for iterateP in range(1, max_p+1):
@@ -322,6 +341,7 @@ for iterateP in range(1, max_p+1):
     lengthOfSeries = len(quarterly_growth_rates_part2)
     k = iterateP + 1
     this_aic = getAIC(lengthOfSeries, k, hat_residuals.squeeze())
+    estimate_coef_list_AR.append(estimate_phi)
     
     aic_list.append(float(this_aic))
 
@@ -392,20 +412,47 @@ for iterateP in range(1, max_p+1):
         aic_list_ADL.append(float(this_aic))
 
 # Use AIC for model selection
-min_aic, final_p = getBestP(aic_list)
-
 print('For AR(p) model of the GDP growth rate:')
+
+min_aic, final_p = getBestP(aic_list)
+final_coef_AR = estimate_coef_list_AR[final_p - 1]
+
+# report the result of AIC
+p_df = pd.DataFrame()
+p_df['AIC'] = aic_list
+print('The results of AIC for each AR(p):')
+print(p_df)
+
+# report the result of estimated coefficients
+coef_df = pd.DataFrame()
+coef_df['coef'] = final_coef_AR
+print(f'The results of estimated coefficients for AR({final_p}) model:')
+print(coef_df)
+
 print(f'The final estimate of (p) is {final_p} with the lowest value of the information criterion which is {min_aic}.')
 
-min_aic_ADL, final_p_ADL, final_q_ADL = getBestP_ADL(aic_list_ADL)
-
 print('For ADL(p,q) model for the unemployment rate:')
+
+min_aic_ADL, final_p_ADL, final_q_ADL = getBestP_ADL(aic_list_ADL)
+aic_index = aic_list_ADL.index(np.min(aic_list_ADL))
+final_coef_ADL = estimate_coef_list_ADL[aic_index]
+
+# report the result of AIC
+p_df = pd.DataFrame()
+p_df['AIC'] = aic_list_ADL
+print('The results of AIC for each ADL(p,q):')
+print(p_df)
+
+# report the result of estimated coefficients
+coef_df = pd.DataFrame()
+coef_df['coef'] = final_coef_ADL
+print(f'The results of estimated coefficients for ADL({final_p},{final_q_ADL}) model:')
+print(coef_df)
+
 print(f'The final estimate of (p,q) is ({final_p_ADL},{final_q_ADL}) with the lowest value of the information criterion which is {min_aic_ADL}.')
 
 # Question 2
 # estimate p-values for the estimated coeﬃcients
-aic_index = aic_list_ADL.index(np.min(aic_list_ADL))
-final_coef_ADL = estimate_coef_list_ADL[aic_index]
 final_residuals_ADL = estimate_residuals_list_ADL[aic_index]
 final_matrix_X = matrixX_list_ADL[aic_index]    
 
