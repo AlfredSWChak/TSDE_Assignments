@@ -316,7 +316,7 @@ kurtosis = getSamplekurtosis(hat_residuals.squeeze())
 # compute JB test statistic
 jb = round((sampleSize - final_p) / 6 * (skewness ** 2 + ((kurtosis - 3) ** 2) / 4),3)
 
-# parameters
+# parameters under the null
 dof = 2     # degrees of freedom
 alpha = 0.95
 
@@ -331,7 +331,72 @@ else:
 
 # perform Breusch-Godfrey test: Testing for autocorrelation
 
+def generateMatrixX_auxiliaryRegression(input_y, input_x, p, q):
+    numberOfRows = min(len(input_y) - p, len(input_x) - q)
+    extra = max(q-p, 0)
+    result_matrix = []
+    
+    for rowNumber in range(0,numberOfRows):
+        row = []
+        row.append(1)
+        
+        for t in range(0, p):
+            row.append(input_y[extra + p + rowNumber - t - 1])
+            
+        for t in range(0, q):
+            row.append(input_x[extra + p + rowNumber - t - 1])
+    
+        result_matrix.append(row)
+     
+    return pd.DataFrame(result_matrix)
 
+def runRegressionModel_auxRegress(input_y, input_x, input_p, input_q):
+    # convert y to matrix y
+    vector_y = pd.DataFrame(input_y[max(input_p, input_q):])
+    vector_y = vector_y.reset_index(drop=True)
+    # convert y to matrix X
+    matrix_X = generateMatrixX_auxiliaryRegression(input_y, input_x, input_p, input_q)
+    
+    # calculate estimated beta by (X′ * X)^{−1} * X′* y
+    estimate_beta = getEstimatedBeta(matrix_X, vector_y)
+
+    # calculate estimated y by X * (estimated beta)
+    estimate_y = matrix_X @ estimate_beta
+    
+    # calculate the residuals
+    residuals = vector_y - estimate_y
+
+    return residuals
+
+auxRegress_residuals = runRegressionModel_auxRegress(final_residuals.squeeze(), quarterly_growth_rates, max_p, final_p)
+
+def getRSquare(input_residuals):
+    mean_res = np.average(input_residuals)
+    ssr = 0
+    sst = 0
+    
+    for res in input_residuals:
+        ssr += res ** 2
+        sst += (res - mean_res) ** 2
+
+    rSquare = 1 - (ssr / sst)
+    
+    return rSquare
+
+bg = round(sampleSize * getRSquare(auxRegress_residuals.squeeze()),4)
+
+# parameters under the null
+dof = max_p     # degrees of freedom
+alpha = 0.95
+
+criticalValue_chi2 = round(chi2.ppf(alpha, dof),3) # critical value under the null
+
+print(f'The BG test statistic is {bg} while the critical value under the null is {criticalValue_chi2}.')
+
+if bg > criticalValue_chi2:
+    print(f'Since {bg} is greater than {criticalValue_chi2}, therefore reject the null.')
+else:
+    print(f'Since {bg} is smaller than {criticalValue_chi2}, therefore does not reject the null.')
 
 '''
 Part II: Impulse Response Functions, Autoregressive Distributed Lag Models, and Granger Causality
