@@ -68,6 +68,7 @@ fileName = '1_sacf'
 gdp_sacf = sacf(quarterly_growth_rates, input_lags, graphTitle, fileName)
 
 # Question 2
+print('Question 2:')
 
 def generateMatrixX(input_y, p):
     numberOfRows = len(input_y) - p
@@ -158,14 +159,16 @@ min_bic, final_p = getBestP(bic_list)
 final_phi = estimate_phi_list[final_p - 1]
 final_residuals = estimate_residuals_list[final_p - 1]
 
+# report the result of estimated coefficients
 coef_df = pd.DataFrame()
 coef_df['coef'] = final_phi
-
+print('The results of estimated coefficients for AR(p) model:')
 print(coef_df)
 
+# report the result of BICs
 p_df = pd.DataFrame()
 p_df['BIC'] = bic_list
-
+print('The results of BIC for each AR(p):')
 print(p_df)
 
 print(f'The final estimate of (p) is {final_p} with the lowest value of the information criterion which is {min_bic}.')
@@ -230,6 +233,7 @@ plt.savefig(f'../2/figures/{fileName}.jpeg', dpi=300)
 plt.show()
 
 # Question 4
+print('Question 4:')
 
 # estimate the variance of residuals
 res_variance = np.var(final_residuals, axis=0)
@@ -283,8 +287,6 @@ plt.show()
 
 # investigate the residuals
 
-# perform Jarque-Bera test: Testing for normality
-
 def getSampleSkewness(input_residuals):
     mean_res = np.average(input_residuals)
     sample_var = np.var(input_residuals, ddof=1)
@@ -320,16 +322,15 @@ jb = round((sampleSize - final_p) / 6 * (skewness ** 2 + ((kurtosis - 3) ** 2) /
 dof = 2     # degrees of freedom
 alpha = 0.95
 
-criticalValue_chi2 = round(chi2.ppf(alpha, dof),3) # critical value under the null
-
+# compute the critical value under the null
+criticalValue_chi2 = round(chi2.ppf(alpha, dof),3)
 print(f'The JB test statistic is {jb} while the critical value under the null is {criticalValue_chi2}.')
 
+# perform Jarque-Bera test: Testing for normality
 if jb > criticalValue_chi2:
     print(f'Since {jb} is greater than {criticalValue_chi2}, therefore reject the null.')
 else:
     print(f'Since {jb} is smaller than {criticalValue_chi2}, therefore does not reject the null.')
-
-# perform Breusch-Godfrey test: Testing for autocorrelation
 
 def generateMatrixX_auxiliaryRegression(input_y, input_x, p, q):
     numberOfRows = min(len(input_y) - p, len(input_x) - q)
@@ -368,6 +369,7 @@ def runRegressionModel_auxRegress(input_y, input_x, input_p, input_q):
 
     return residuals
 
+# estimate the residuals
 auxRegress_residuals = runRegressionModel_auxRegress(final_residuals.squeeze(), quarterly_growth_rates, max_p, final_p)
 
 def getRSquare(input_residuals):
@@ -383,16 +385,18 @@ def getRSquare(input_residuals):
     
     return rSquare
 
+# compute BG test statistic
 bg = round(sampleSize * getRSquare(auxRegress_residuals.squeeze()),4)
 
 # parameters under the null
 dof = max_p     # degrees of freedom
 alpha = 0.95
 
-criticalValue_chi2 = round(chi2.ppf(alpha, dof),3) # critical value under the null
-
+# compute the critical value under the null
+criticalValue_chi2 = round(chi2.ppf(alpha, dof),3)
 print(f'The BG test statistic is {bg} while the critical value under the null is {criticalValue_chi2}.')
 
+# perform Breusch-Godfrey test: Testing for autocorrelation
 if bg > criticalValue_chi2:
     print(f'Since {bg} is greater than {criticalValue_chi2}, therefore reject the null.')
 else:
@@ -405,6 +409,7 @@ Part II: Impulse Response Functions, Autoregressive Distributed Lag Models, and 
 print('Part II:')
 
 # Question 1
+print('Question 1:')
 
 quarterly_growth_rates_part2 = part2Data['GDP_QGR']
 quarterly_unemployment_rates = part2Data['UN_RATE']
@@ -544,10 +549,10 @@ print(p_df)
 # report the result of estimated coefficients
 coef_df = pd.DataFrame()
 coef_df['coef'] = final_coef_AR
-print(f'The results of estimated coefficients for AR({final_p}) model:')
+print(f'The results of estimated coefficients for AR({final_p_AR}) model:')
 print(coef_df)
 
-print(f'The final estimate of (p) is {final_p} with the lowest value of the information criterion which is {min_aic}.')
+print(f'The final estimate of (p) is {final_p_AR} with the lowest value of the information criterion which is {min_aic}.')
 
 print('For ADL(p,q) model for the unemployment rate:')
 
@@ -564,13 +569,14 @@ print(p_df)
 # report the result of estimated coefficients
 coef_df = pd.DataFrame()
 coef_df['coef'] = final_coef_ADL
-print(f'The results of estimated coefficients for ADL({final_p},{final_q_ADL}) model:')
+print(f'The results of estimated coefficients for ADL({final_p_ADL},{final_q_ADL}) model:')
 print(coef_df)
 
 print(f'The final estimate of (p,q) is ({final_p_ADL},{final_q_ADL}) with the lowest value of the information criterion which is {min_aic_ADL}.')
 
 # Question 2
-# estimate p-values for the estimated coeﬃcients
+print('Question 2:')
+
 final_residuals_ADL = estimate_residuals_list_ADL[aic_index]
 final_matrix_X = matrixX_list_ADL[aic_index]    
 
