@@ -280,6 +280,12 @@ plt.legend()
 plt.savefig(f'../2/figures/{fileName}.jpeg', dpi=300)
 plt.show()
 
+# investigate the residuals
+
+# perform Jarque-Bera test: Testing for normality
+
+# perform Breusch-Godfrey test: Testing for autocorrelation
+
 '''
 Part II: Impulse Response Functions, Autoregressive Distributed Lag Models, and Granger Causality
 '''
@@ -414,8 +420,8 @@ for iterateP in range(1, max_p+1):
 # Use AIC for model selection
 print('For AR(p) model of the GDP growth rate:')
 
-min_aic, final_p = getBestP(aic_list)
-final_coef_AR = estimate_coef_list_AR[final_p - 1]
+min_aic, final_p_AR = getBestP(aic_list)
+final_coef_AR = estimate_coef_list_AR[final_p_AR - 1]
 
 # report the result of AIC
 p_df = pd.DataFrame()
@@ -492,5 +498,178 @@ print(coef_t_p_df)
 # derive the long-run equilibrium relation between the unemployment rate and the GDP growth rate
 
 # Question 4
+
+# Step 1: compute the partial derivatives
+def getPartialDerivate(input_k, input_p, input_coef_list):
+    pD_list = []
+    
+    for i in range(1,input_k+1):
+        # for t = k
+        if i == 1:
+            pD_list.append(1)
+            
+        # for t > k
+        else:
+            result = 0 
+            
+            for j in range (1, input_p+1):
+                if i > j:
+                    result += pD_list[i-j-1] * input_coef_list[j]
+                    # print(f't = {i}, pd:{i-j-1} * coef:{j}')
+            
+            pD_list.append(result)
+    
+    return pD_list
+
+def getPartialDerivate_ADL(input_k, input_p, input_q, input_pD_list, input_coef_list):
+    pD_list = []
+    
+    for i in range(1,input_k+1):  
+        # for t >= k
+        result = 0 
+        
+        # partial derivate of Y
+        for t1 in range (1, input_p+1):
+            if i > t1:
+                result += pD_list[i-t1-1] * input_coef_list[t1]
+                # print(f't = {i}, pd:{i-t1-1} * coef:{t1}', end=',')
+                
+        # partial derivate of X
+        for t2 in range (0, input_q+1):
+            if i > t2:
+                result += input_pD_list[i-t2-1] * input_coef_list[input_p+t2]
+                # print(f'pd_X:{i-t2-1} * coef:{input_p+t2+1}')
+            
+        pD_list.append(result)
+    
+    return pD_list
+
+numberOfPeriods = 100
+origin_x = quarterly_growth_rates_part2.iloc[-1]
+origin_y = quarterly_unemployment_rates.iloc[-1]
+origin_x_name = quarterly_name.iloc[-1]
+shock = 2 # good scenario
+
+x_pD_list = getPartialDerivate(numberOfPeriods, final_p_AR, list(final_coef_AR.squeeze()))
+y_pD_list = getPartialDerivate_ADL(numberOfPeriods, final_p_ADL, final_q_ADL, x_pD_list, list(final_coef_ADL.squeeze()))
+
+# Step 2: compute the IRF
+tilde_x_list = []
+tilde_y_list = []
+tilde_x_list.append(origin_x)
+tilde_y_list.append(origin_y)
+irf_quarterly_name = pd.Series()
+irf_quarterly_name.loc[0] = origin_x_name
+
 # analyze the Dutch unemployment rate in the ‘good scenario’
+for n in range(0, numberOfPeriods):
+    tilde_x = origin_x + x_pD_list[n] * shock
+    tilde_y = origin_y + y_pD_list[n] * shock
+    tilde_x_list.append(tilde_x)
+    tilde_y_list.append(tilde_y)
+    
+    forecast_result_name = getQuarterlyName(list(irf_quarterly_name))
+    irf_quarterly_name = pd.concat([irf_quarterly_name, pd.Series([forecast_result_name])], ignore_index=True)
+
+irf_fourth_quarter_name = [quarter for quarter in irf_quarterly_name if 'Q4' in quarter]
+
+graphTitle = 'IRF of the GDP growth rate in GOOD scenario'
+fileName = '8_irf_gdp_good'
+
+plt.figure(figsize=(10,5))    
+plt.plot(irf_quarterly_name, tilde_x_list, 
+         linewidth = 1, color = 'blue')
+plt.axhline(origin_x, color='black', linestyle='--', linewidth=1)
+plt.title(graphTitle, fontweight='bold')
+plt.xticks(irf_quarterly_name, minor=True)
+plt.xticks(irf_fourth_quarter_name, minor=False, rotation=45)
+plt.grid(True, axis='x', which='minor', 
+         linestyle='--', linewidth=0.5, color='grey')
+plt.grid(True, axis='x', which='major', 
+         linestyle='--', linewidth=0.8, color='black')
+plt.xlabel('Time')
+plt.ylabel('Rates')
+plt.savefig(f'../2/figures/{fileName}.jpeg', dpi=300)
+plt.show()
+
+graphTitle = 'IRF of the unemployment rate in GOOD scenario'
+fileName = '8_irf_unr_good'
+
+plt.figure(figsize=(10,5))    
+plt.plot(irf_quarterly_name, tilde_y_list, 
+         linewidth = 1, color = 'blue')
+plt.axhline(origin_y, color='black', linestyle='--', linewidth=1)
+plt.title(graphTitle, fontweight='bold')
+plt.xticks(irf_quarterly_name, minor=True)
+plt.xticks(irf_fourth_quarter_name, minor=False, rotation=45)
+plt.grid(True, axis='x', which='minor', 
+         linestyle='--', linewidth=0.5, color='grey')
+plt.grid(True, axis='x', which='major', 
+         linestyle='--', linewidth=0.8, color='black')
+plt.xlabel('Time')
+plt.ylabel('Rates')
+plt.savefig(f'../2/figures/{fileName}.jpeg', dpi=300)
+plt.show()
+
 # analyze the Dutch unemployment rate in the ‘bad scenario’
+shock = -2 # good scenario
+
+x_pD_list = getPartialDerivate(numberOfPeriods, final_p_AR, list(final_coef_AR.squeeze()))
+y_pD_list = getPartialDerivate_ADL(numberOfPeriods, final_p_ADL, final_q_ADL, x_pD_list, list(final_coef_ADL.squeeze()))
+
+# Step 2: compute the IRF
+tilde_x_list = []
+tilde_y_list = []
+tilde_x_list.append(origin_x)
+tilde_y_list.append(origin_y)
+irf_quarterly_name = pd.Series()
+irf_quarterly_name.loc[0] = origin_x_name
+
+for n in range(0, numberOfPeriods):
+    tilde_x = origin_x + x_pD_list[n] * shock
+    tilde_y = origin_y + y_pD_list[n] * shock
+    tilde_x_list.append(tilde_x)
+    tilde_y_list.append(tilde_y)
+    
+    forecast_result_name = getQuarterlyName(list(irf_quarterly_name))
+    irf_quarterly_name = pd.concat([irf_quarterly_name, pd.Series([forecast_result_name])], ignore_index=True)
+
+irf_fourth_quarter_name = [quarter for quarter in irf_quarterly_name if 'Q4' in quarter]
+
+graphTitle = 'IRF of the GDP growth rate in BAD scenario'
+fileName = '8_irf_gdp_bad'
+
+plt.figure(figsize=(10,5))    
+plt.plot(irf_quarterly_name, tilde_x_list, 
+         linewidth = 1, color = 'blue')
+plt.axhline(origin_x, color='black', linestyle='--', linewidth=1)
+plt.title(graphTitle, fontweight='bold')
+plt.xticks(irf_quarterly_name, minor=True)
+plt.xticks(irf_fourth_quarter_name, minor=False, rotation=45)
+plt.grid(True, axis='x', which='minor', 
+         linestyle='--', linewidth=0.5, color='grey')
+plt.grid(True, axis='x', which='major', 
+         linestyle='--', linewidth=0.8, color='black')
+plt.xlabel('Time')
+plt.ylabel('Rates')
+plt.savefig(f'../2/figures/{fileName}.jpeg', dpi=300)
+plt.show()
+
+graphTitle = 'IRF of the unemployment rate in BAD scenario'
+fileName = '8_irf_unr_bad'
+
+plt.figure(figsize=(10,5))    
+plt.plot(irf_quarterly_name, tilde_y_list, 
+         linewidth = 1, color = 'blue')
+plt.axhline(origin_y, color='black', linestyle='--', linewidth=1)
+plt.title(graphTitle, fontweight='bold')
+plt.xticks(irf_quarterly_name, minor=True)
+plt.xticks(irf_fourth_quarter_name, minor=False, rotation=45)
+plt.grid(True, axis='x', which='minor', 
+         linestyle='--', linewidth=0.5, color='grey')
+plt.grid(True, axis='x', which='major', 
+         linestyle='--', linewidth=0.8, color='black')
+plt.xlabel('Time')
+plt.ylabel('Rates')
+plt.savefig(f'../2/figures/{fileName}.jpeg', dpi=300)
+plt.show()
