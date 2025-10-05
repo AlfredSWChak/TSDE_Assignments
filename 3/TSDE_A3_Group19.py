@@ -3,7 +3,13 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from scipy.stats import norm
 from scipy.stats import gaussian_kde
-import math
+import datetime
+
+'''
+Part I: Spurious Regression and Unit Roots
+'''
+
+# Question 1
 
 # calculation for estimated beta by OLS regression
 def getEstimatedBeta(input_matrix_X, input_vector_y):
@@ -76,7 +82,6 @@ def getKernelDensity(input_variables):
     
     return x, density
     
-
 def distributionPlot(input_x_list, input_density_list, input_numberOfSimulations_list, input_xLabel, input_title, input_fileName):
     plt.figure(figsize=(10,6)) 
     
@@ -93,31 +98,21 @@ def distributionPlot(input_x_list, input_density_list, input_numberOfSimulations
     plt.savefig(f'../3/figures/{input_fileName}.jpeg', dpi=300)
     plt.show()
     
-t_list = [100, 500, 1000]
-numberOfSimulations_B = 10000
-
-beta_x_list = []
-beta_density_list = []
-t_x_list = [] 
-t_density_list = []
-rSquare_x_list = []
-rSquare_density_list = []
-
-for t in t_list:
+def monteCarlo(input_B, input_t):
     this_beta_list = []
     this_t_list = []
     this_RSquare_list = []
-
-    for i in range(0, numberOfSimulations_B):
-        v_t = np.random.normal(loc=0, scale=1, size=t+1)
-        w_t = np.random.normal(loc=0, scale=1, size=t+1)
+    
+    for i in range(0, input_B):
+        v_t = np.random.normal(loc=0, scale=1, size=input_t+1)
+        w_t = np.random.normal(loc=0, scale=1, size=input_t+1)
     
         this_y_list = []
         this_y_list.append(0)
         this_x_list = []
         this_x_list.append(0)
 
-        for j in range(1, t+1):
+        for j in range(1, time+1):
             y_t = this_y_list[j-1] + v_t[j]
             this_y_list.append(y_t)
             x_t = this_x_list[j-1] + w_t[j]
@@ -134,6 +129,21 @@ for t in t_list:
         this_beta_list.append(estimate_beta.iat[1, 0])
         this_t_list.append(t_statistic)
         this_RSquare_list.append(rSquare)
+    
+    return this_beta_list, this_t_list, this_RSquare_list
+    
+time_list = [100, 500, 1000]
+numberOfSimulations_B = 5000
+
+beta_x_list = []
+beta_density_list = []
+t_x_list = [] 
+t_density_list = []
+rSquare_x_list = []
+rSquare_density_list = []
+
+for time in time_list:
+    this_beta_list, this_t_list, this_RSquare_list = monteCarlo(numberOfSimulations_B, time)
         
     beta_x, beta_density = getKernelDensity(this_beta_list)
     beta_x_list.append(beta_x)
@@ -147,17 +157,80 @@ for t in t_list:
     rSquare_x_list.append(rSquare_x)
     rSquare_density_list.append(rSquare_density)
           
-graphTitle = 'Distribution of Estimated hat_betas'
+graphTitle = f'Distribution of Estimated β with B = {numberOfSimulations_B}'
 fileName = '1_MC_pdf_beta'
 xName = 'beta'
-distributionPlot(beta_x_list, beta_density_list, t_list, xName, graphTitle, fileName)
+distributionPlot(beta_x_list, beta_density_list, time_list, xName, graphTitle, fileName)
 
-graphTitle = 'Distribution of Estimated t-statistics'
+graphTitle = f'Distribution of Estimated t-statistics with B = {numberOfSimulations_B}'
 fileName = '1_MC_pdf_t'
 xName = 't'
-distributionPlot(t_x_list, t_density_list, t_list, xName, graphTitle, fileName)
+distributionPlot(t_x_list, t_density_list, time_list, xName, graphTitle, fileName)
 
-graphTitle = 'Distribution of Estimated R^2'
+graphTitle = f'Distribution of Estimated R^2 with B = {numberOfSimulations_B}'
 fileName = '1_MC_pdf_RSquare'
 xName = 'R^2'
-distributionPlot(rSquare_x_list, rSquare_density_list, t_list, xName, graphTitle, fileName)
+distributionPlot(rSquare_x_list, rSquare_density_list, time_list, xName, graphTitle, fileName)
+
+# Question 2
+
+def read_csv(filename) -> str:
+    output = pd.read_csv(filename, header = 0)
+    return output
+    
+part1Data = read_csv('../3/data_tsde_assignment_3_part_1.csv')
+part2Data = read_csv('../3/data_tsde_assignment_3_part_2.csv')
+
+aapl_stock = part1Data[['DATE','APPLE']]
+aapl_stock = aapl_stock.set_index('DATE')
+msft_stock = part1Data[['DATE','MICROSOFT']]
+msft_stock = msft_stock.set_index('DATE')
+
+def samplePlot(input_sample, input_x, input_title, input_fileName):
+    plt.figure(figsize=(10,6))    
+    plt.plot(input_x, input_sample, linewidth = 1, color = 'blue')
+    plt.title(input_title, fontweight='bold')
+    plt.xlabel('Time')
+    plt.ylabel('Daily Stock Price')
+    plt.savefig(f'../3/figures/{input_fileName}.jpeg', dpi=300)
+    plt.show()
+
+graphTitle = 'APPLE stock time series'
+fileName = '2_aapl'
+samplePlot(aapl_stock, part1Data['DATE'], graphTitle, fileName)
+
+graphTitle = 'MICROSOFT stock time series'
+fileName = '2_msft'
+samplePlot(msft_stock, part1Data['DATE'], graphTitle, fileName)
+
+def sacf(input_data, lag, input_title, input_fileName):
+    result = []
+    
+    for i in range(1, lag+1):
+        x = pd.Series(input_data)
+        result.append(x.autocorr(lag = i))
+    
+    lags = np.arange(1,lag+1,1)
+    
+    plt.figure(figsize=(10,6))
+    plt.bar(lags, result, color='blue', edgecolor='black')
+    plt.axhline(0, color='black', linestyle='--', linewidth=1)
+    plt.title(input_title, fontweight='bold')
+    plt.xlabel('Lag')
+    plt.ylabel('ACF')
+    plt.savefig(f'../3/figures/{input_fileName}.jpeg', dpi=300)
+    plt.show()
+    
+    return result
+
+input_lags = 12
+
+graphTitle = 'Sample ACF of AAPL daily stock prices'
+fileName = '2_sacf_aapl'
+aapl_sacf = sacf(aapl_stock['APPLE'], input_lags, graphTitle, fileName)
+
+graphTitle = 'Sample ACF of MSFT daily stock prices'
+fileName = '2_sacf_msft'
+aapl_sacf = sacf(msft_stock['MICROSOFT'], input_lags, graphTitle, fileName)
+
+# Question 3
