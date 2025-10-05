@@ -234,3 +234,97 @@ fileName = '2_sacf_msft'
 aapl_sacf = sacf(msft_stock['MICROSOFT'], input_lags, graphTitle, fileName)
 
 # Question 3
+
+def generateMatrixX(input_y, p, boolean_intercept):
+    numberOfRows = len(input_y) - p
+    result_matrix = []
+    
+    for rowNumber in range(0,numberOfRows):
+        row = []
+        
+        if boolean_intercept == True:
+            row.append(1)
+        
+        for t in range(0, p):
+            row.append(input_y.iloc[p + rowNumber - t - 1])
+    
+        result_matrix.append(row)
+     
+    return pd.DataFrame(result_matrix)
+
+def runRegressionModel_AR(input_y, input_p):
+    # convert y to matrix y
+    vector_y = pd.DataFrame(input_y[input_p:])
+    vector_y = vector_y.reset_index(drop=True)
+    # convert y to matrix X
+    matrix_X = generateMatrixX(input_y, input_p, False)
+    
+    # calculate estimated beta by (X′ * X)^{−1} * X′* y
+    estimate_beta = getEstimatedBeta(matrix_X, vector_y)
+
+    # calculate estimated y by X * (estimated beta)
+    estimate_y = matrix_X @ estimate_beta
+    
+    # calculate the residuals
+    estimate_residuals = vector_y - estimate_y
+
+    return estimate_beta, estimate_y, estimate_residuals
+
+# compute Bayesian information criterion
+def getBIC(t, k, residuals):
+    ssr_k = 0
+    
+    for res in residuals:
+        ssr_k += res ** 2
+    
+    bic = t * np.log(ssr_k/t) + k * np.log(t)
+    
+    return bic
+
+def getBestP(input_list):
+    min_value = round(np.min(input_list),3)
+    final_p = input_list.index(np.min(input_list)) + 1
+    return min_value, final_p
+
+stock_list = part1Data.columns.tolist()
+stock_list.pop(0)
+
+for stock in stock_list:
+    max_p = 12
+    hat_beta_list = []
+    hat_residuals_list = []
+    bic_list = []
+
+    print(f'{stock}:')
+
+    # estimate with a maximum p up to 12 lags
+    for iterateP in range(1, max_p+1):
+        # estimate an AR(p) model with intercept for the given data
+        hat_beta, hat_y, hat_residuals = runRegressionModel_AR(part1Data[stock], iterateP)
+        
+        lengthOfSeries = len(part1Data[stock])
+        k = iterateP + 1
+        
+        this_bic = getBIC(lengthOfSeries, k, hat_residuals.squeeze())
+        hat_beta_list.append(hat_beta)
+        hat_residuals_list.append(hat_residuals)
+        bic_list.append(float(this_bic))
+
+    # Use BIC for model selection
+    min_bic, final_p = getBestP(bic_list)
+    final_beta = hat_beta_list[final_p - 1]
+    final_residuals = hat_residuals_list[final_p - 1]
+
+    # report the result of estimated coefficients
+    coef_df = pd.DataFrame()
+    coef_df['coef'] = final_beta
+    # print('The results of estimated coefficients for AR(p) model:')
+    print(coef_df)
+
+    # report the result of BICs
+    p_df = pd.DataFrame()
+    p_df['BIC'] = bic_list
+    # print('The results of BIC for each AR(p):')
+    # print(p_df)
+
+    print(f'The final estimate of (p) is {final_p} with the lowest value of the information criterion which is {min_bic}.')
