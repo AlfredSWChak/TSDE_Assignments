@@ -3,7 +3,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from scipy.stats import norm
 from scipy.stats import gaussian_kde
-import datetime
+from statsmodels.tsa.stattools import adfuller
 
 '''
 Part I: Spurious Regression and Unit Roots
@@ -194,6 +194,8 @@ def samplePlot(input_sample, input_x, input_title, input_fileName):
     plt.ylabel('Daily Stock Price')
     plt.savefig(f'../3/figures/{input_fileName}.jpeg', dpi=300)
     plt.show()
+    
+trading_days = pd.DatetimeIndex(part1Data['DATE'])
 
 graphTitle = 'APPLE stock time series'
 fileName = '2_aapl'
@@ -268,7 +270,7 @@ def runRegressionModel_AR(input_y, input_p):
     # calculate the residuals
     estimate_residuals = vector_y - estimate_y
 
-    return estimate_beta, estimate_y, estimate_residuals
+    return matrix_X, estimate_beta, estimate_y, estimate_residuals
 
 # compute Bayesian information criterion
 def getBIC(t, k, residuals):
@@ -289,18 +291,24 @@ def getBestP(input_list):
 stock_list = part1Data.columns.tolist()
 stock_list.pop(0)
 
-for stock in stock_list:
+stock_df = pd.DataFrame(columns=['Stock_ID','Order of p', 'ADF', 'Decision'])
+
+for sNumber, stock in enumerate(stock_list):
     max_p = 12
     hat_beta_list = []
     hat_residuals_list = []
+    se_beta_list = []
     bic_list = []
 
-    print(f'{stock}:')
+    # print(f'{stock}:')
 
     # estimate with a maximum p up to 12 lags
     for iterateP in range(1, max_p+1):
         # estimate an AR(p) model with intercept for the given data
-        hat_beta, hat_y, hat_residuals = runRegressionModel_AR(part1Data[stock], iterateP)
+        matrix_X, hat_beta, hat_y, hat_residuals = runRegressionModel_AR(part1Data[stock], iterateP)
+        
+        estimate_SE = getStandardError(matrix_X, hat_residuals)
+        se_beta_list.append(estimate_SE)
         
         lengthOfSeries = len(part1Data[stock])
         k = iterateP + 1
@@ -314,12 +322,13 @@ for stock in stock_list:
     min_bic, final_p = getBestP(bic_list)
     final_beta = hat_beta_list[final_p - 1]
     final_residuals = hat_residuals_list[final_p - 1]
+    final_se = se_beta_list[final_p - 1]
 
     # report the result of estimated coefficients
     coef_df = pd.DataFrame()
     coef_df['coef'] = final_beta
     # print('The results of estimated coefficients for AR(p) model:')
-    print(coef_df)
+    # print(coef_df)
 
     # report the result of BICs
     p_df = pd.DataFrame()
@@ -327,4 +336,31 @@ for stock in stock_list:
     # print('The results of BIC for each AR(p):')
     # print(p_df)
 
-    print(f'The final estimate of (p) is {final_p} with the lowest value of the information criterion which is {min_bic}.')
+    # print(f'The final estimate of (p) is {final_p} with the lowest value of the information criterion which is {min_bic}.')
+    
+    def adf_test(input_alpha, input_adf, boolean_intercept):
+        # DF critical Value without intercept at significance level = 0.1
+        criticalValue_withoutIntercept = -1.62
+        
+        # DF critical Value with intercept at significance level = 0.1
+        criticalValue_withIntercept = -2.57
+        
+        if input_adf < criticalValue_withoutIntercept:
+            result = 'Reject the null'
+            # print(f'{result}.')
+            return result
+        else:
+            result = 'Do not reject'
+            # print(f'{result}.')
+            return result
+    
+    # compute the ADF test statistic under the null
+    adf_statistic = (np.sum(final_beta.squeeze()) - 1) / (np.sum(final_se))
+    # print(f'ADF test statistic: {adf_statistic}')
+
+    decision = adf_test(0.1, adf_statistic, False)
+    
+    stock_df.loc[sNumber] = [stock, final_p, adf_statistic, decision]
+  
+stock_df = stock_df.set_index('Stock_ID')  
+print(stock_df)
