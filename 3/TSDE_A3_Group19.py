@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
 from scipy.stats import norm
 from scipy.stats import gaussian_kde
 from statsmodels.tsa.stattools import adfuller
@@ -187,16 +188,24 @@ msft_stock = part1Data[['DATE','MICROSOFT']]
 msft_stock = msft_stock.set_index('DATE')
 
 def samplePlot(input_sample, input_x, input_title, input_fileName):
+    plot_x = pd.to_datetime(input_x)
+    
     plt.figure(figsize=(10,6))    
-    plt.plot(input_x, input_sample, linewidth = 1, color = 'blue')
+    plt.plot(plot_x, input_sample, linewidth = 1, color = 'blue')
     plt.title(input_title, fontweight='bold')
     plt.xlabel('Time')
-    plt.ylabel('Daily Stock Price')
+    plt.ylabel('Daily Stock Price')    
+    
+    # Set 6-month ticks on the x-axis
+    plt.gca().xaxis.set_major_locator(mdates.MonthLocator(interval=6))
+    plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m'))
+
+    # Auto-format date labels (avoid overlapping)
+    plt.gcf().autofmt_xdate()
+
     plt.savefig(f'../3/figures/{input_fileName}.jpeg', dpi=300)
     plt.show()
     
-trading_days = pd.DatetimeIndex(part1Data['DATE'])
-
 graphTitle = 'APPLE stock time series'
 fileName = '2_aapl'
 samplePlot(aapl_stock, part1Data['DATE'], graphTitle, fileName)
@@ -364,3 +373,101 @@ for sNumber, stock in enumerate(stock_list):
   
 stock_df = stock_df.set_index('Stock_ID')  
 print(stock_df)
+
+'''
+Part II: Cointegration and Error Correction Models
+'''
+
+# Question 1
+
+def monteCarlo_Cointegrated(input_B, input_t, input_phi, input_corr):
+    this_beta_list = []
+    this_t_list = []
+    this_RSquare_list = []
+    this_lambda_list = []
+    
+    for i in range(0, input_B):
+        v_t = np.random.normal(loc=0, scale=1, size=input_t+1)
+        w_t = np.random.normal(loc=0, scale=1, size=input_t+1)
+    
+        this_x_list = []
+        this_x_list.append(0)
+        this_y_list = []
+
+        for j in range(1, time+1):
+            x_t = input_phi * this_x_list[j-1] + v_t[j]
+            this_x_list.append(x_t)
+            y_t = input_corr * this_x_list[j] + w_t[j]
+            this_y_list.append(y_t)
+            
+        this_x_list.pop(0)
+        
+        matrix_X, estimate_beta, hat_y, hat_residuals = runRegressionModel(this_y_list, this_x_list)
+        
+        estimate_SE = getStandardError(matrix_X, hat_residuals)
+        t_statistic = (estimate_beta.iat[1,0] - input_corr) / estimate_SE[1]
+        rSquare = getRSquare(hat_residuals.squeeze(), this_y_list)                
+
+        this_beta_list.append(estimate_beta.iat[1, 0])
+        this_t_list.append(t_statistic)
+        this_RSquare_list.append(rSquare)
+        
+        estimate_lambda = estimate_beta.iat[1,0]
+        this_lambda_list.append(estimate_lambda)
+    
+    return this_beta_list, this_t_list, this_RSquare_list, this_lambda_list
+
+phi_list = [1, 0.5, 0.25]
+
+for phi in phi_list:
+    beta_x_list = []
+    beta_density_list = []
+    t_x_list = [] 
+    t_density_list = []
+    rSquare_x_list = []
+    rSquare_density_list = []
+    
+    lambda_x_list = []
+    lambda_density_list = []
+    
+    for time in time_list:
+        corr = 0.5
+        
+        this_beta_list, this_t_list, this_RSquare_list, this_lambda_list = monteCarlo_Cointegrated(numberOfSimulations_B, time, phi, corr)
+            
+        beta_x, beta_density = getKernelDensity(this_beta_list)
+        beta_x_list.append(beta_x)
+        beta_density_list.append(beta_density)
+        
+        t_x, t_density = getKernelDensity(this_t_list)
+        t_x_list.append(t_x)
+        t_density_list.append(t_density)
+        
+        rSquare_x, rSquare_density = getKernelDensity(this_RSquare_list)
+        rSquare_x_list.append(rSquare_x)
+        rSquare_density_list.append(rSquare_density)
+    
+        lambda_x, lambda_density = getKernelDensity(this_lambda_list)
+        lambda_x_list.append(lambda_x)
+        lambda_density_list.append(lambda_density)
+    
+    if phi == 1:
+        graphTitle = f'Distribution of Estimated β with cointegrating vector (1,{-corr})'
+        fileName = f'5_MC_pdf_beta_phi_{phi}'
+        xName = 'beta'
+        distributionPlot(beta_x_list, beta_density_list, time_list, xName, graphTitle, fileName)
+
+        graphTitle = f'Distribution of Estimated t-statistics with cointegration vector (1,{-corr})'
+        fileName = f'5_MC_pdf_t_phi_{phi}'
+        xName = 't'
+        distributionPlot(t_x_list, t_density_list, time_list, xName, graphTitle, fileName)
+
+        graphTitle = f'Distribution of Estimated R^2 with cointegration vector (1,{-corr})'
+        fileName = f'5_MC_pdf_RSquare_phi_{phi}'
+        xName = 'R^2'
+        distributionPlot(rSquare_x_list, rSquare_density_list, time_list, xName, graphTitle, fileName)
+    
+    graphTitle = f'Distribution of Estimated λ with ɸ = {phi}'
+    fileName = f'5_MC_pdf_lambda_phi_{phi}'
+    xName = 'lambda'
+    distributionPlot(lambda_x_list, lambda_density_list, time_list, xName, graphTitle, fileName)
