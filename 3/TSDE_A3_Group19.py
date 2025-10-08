@@ -113,7 +113,7 @@ def monteCarlo(input_B, input_t):
         this_x_list = []
         this_x_list.append(0)
 
-        for j in range(1, time+1):
+        for j in range(1, input_t+1):
             y_t = this_y_list[j-1] + v_t[j]
             this_y_list.append(y_t)
             x_t = this_x_list[j-1] + w_t[j]
@@ -133,45 +133,46 @@ def monteCarlo(input_B, input_t):
     
     return this_beta_list, this_t_list, this_RSquare_list
     
-time_list = [100, 500, 1000]
-numberOfSimulations_B = 5000
+def partI_question1():
+    time_list = [100, 500, 1000]
+    numberOfSimulations_B = 5000
 
-beta_x_list = []
-beta_density_list = []
-t_x_list = [] 
-t_density_list = []
-rSquare_x_list = []
-rSquare_density_list = []
+    beta_x_list = []
+    beta_density_list = []
+    t_x_list = [] 
+    t_density_list = []
+    rSquare_x_list = []
+    rSquare_density_list = []
 
-for time in time_list:
-    this_beta_list, this_t_list, this_RSquare_list = monteCarlo(numberOfSimulations_B, time)
+    for time in time_list:
+        this_beta_list, this_t_list, this_RSquare_list = monteCarlo(numberOfSimulations_B, time)
+            
+        beta_x, beta_density = getKernelDensity(this_beta_list)
+        beta_x_list.append(beta_x)
+        beta_density_list.append(beta_density)
         
-    beta_x, beta_density = getKernelDensity(this_beta_list)
-    beta_x_list.append(beta_x)
-    beta_density_list.append(beta_density)
-    
-    t_x, t_density = getKernelDensity(this_t_list)
-    t_x_list.append(t_x)
-    t_density_list.append(t_density)
-    
-    rSquare_x, rSquare_density = getKernelDensity(this_RSquare_list)
-    rSquare_x_list.append(rSquare_x)
-    rSquare_density_list.append(rSquare_density)
-          
-graphTitle = f'Distribution of Estimated β with B = {numberOfSimulations_B}'
-fileName = '1_MC_pdf_beta'
-xName = 'beta'
-distributionPlot(beta_x_list, beta_density_list, time_list, xName, graphTitle, fileName)
+        t_x, t_density = getKernelDensity(this_t_list)
+        t_x_list.append(t_x)
+        t_density_list.append(t_density)
+        
+        rSquare_x, rSquare_density = getKernelDensity(this_RSquare_list)
+        rSquare_x_list.append(rSquare_x)
+        rSquare_density_list.append(rSquare_density)
+            
+    graphTitle = f'Distribution of Estimated β with B = {numberOfSimulations_B}'
+    fileName = '1_MC_pdf_beta'
+    xName = 'beta'
+    distributionPlot(beta_x_list, beta_density_list, time_list, xName, graphTitle, fileName)
 
-graphTitle = f'Distribution of Estimated t-statistics with B = {numberOfSimulations_B}'
-fileName = '1_MC_pdf_t'
-xName = 't'
-distributionPlot(t_x_list, t_density_list, time_list, xName, graphTitle, fileName)
+    graphTitle = f'Distribution of Estimated t-statistics with B = {numberOfSimulations_B}'
+    fileName = '1_MC_pdf_t'
+    xName = 't'
+    distributionPlot(t_x_list, t_density_list, time_list, xName, graphTitle, fileName)
 
-graphTitle = f'Distribution of Estimated R^2 with B = {numberOfSimulations_B}'
-fileName = '1_MC_pdf_RSquare'
-xName = 'R^2'
-distributionPlot(rSquare_x_list, rSquare_density_list, time_list, xName, graphTitle, fileName)
+    graphTitle = f'Distribution of Estimated R^2 with B = {numberOfSimulations_B}'
+    fileName = '1_MC_pdf_RSquare'
+    xName = 'R^2'
+    distributionPlot(rSquare_x_list, rSquare_density_list, time_list, xName, graphTitle, fileName)
 
 # Question 2
 
@@ -182,13 +183,8 @@ def read_csv(filename) -> str:
 part1Data = read_csv('../3/data_tsde_assignment_3_part_1.csv')
 part2Data = read_csv('../3/data_tsde_assignment_3_part_2.csv')
 
-aapl_stock = part1Data[['DATE','APPLE']]
-aapl_stock = aapl_stock.set_index('DATE')
-msft_stock = part1Data[['DATE','MICROSOFT']]
-msft_stock = msft_stock.set_index('DATE')
-
 def samplePlot(input_sample, input_x, input_title, input_fileName):
-    plot_x = pd.to_datetime(input_x)
+    plot_x = pd.to_datetime(input_x, dayfirst=True)
     
     plt.figure(figsize=(10,6))    
     plt.plot(plot_x, input_sample, linewidth = 1, color = 'blue')
@@ -205,23 +201,15 @@ def samplePlot(input_sample, input_x, input_title, input_fileName):
 
     plt.savefig(f'../3/figures/{input_fileName}.jpeg', dpi=300)
     plt.show()
-    
-graphTitle = 'APPLE stock time series'
-fileName = '2_aapl'
-samplePlot(aapl_stock, part1Data['DATE'], graphTitle, fileName)
 
-graphTitle = 'MICROSOFT stock time series'
-fileName = '2_msft'
-samplePlot(msft_stock, part1Data['DATE'], graphTitle, fileName)
-
-def sacf(input_data, lag, input_title, input_fileName):
+def sacf(input_data, input_lag, input_title, input_fileName):
     result = []
     
-    for i in range(1, lag+1):
+    for i in range(1, input_lag+1):
         x = pd.Series(input_data)
         result.append(x.autocorr(lag = i))
     
-    lags = np.arange(1,lag+1,1)
+    lags = np.arange(1,input_lag+1,1)
     
     plt.figure(figsize=(10,6))
     plt.bar(lags, result, color='blue', edgecolor='black')
@@ -234,15 +222,29 @@ def sacf(input_data, lag, input_title, input_fileName):
     
     return result
 
-input_lags = 12
+def partI_question2():
+    aapl_stock = part1Data[['DATE','APPLE']]
+    aapl_stock = aapl_stock.set_index('DATE')
+    msft_stock = part1Data[['DATE','MICROSOFT']]
+    msft_stock = msft_stock.set_index('DATE')
 
-graphTitle = 'Sample ACF of AAPL daily stock prices'
-fileName = '2_sacf_aapl'
-aapl_sacf = sacf(aapl_stock['APPLE'], input_lags, graphTitle, fileName)
+    graphTitle = 'APPLE stock time series'
+    fileName = '2_aapl'
+    samplePlot(aapl_stock, part1Data['DATE'], graphTitle, fileName)
 
-graphTitle = 'Sample ACF of MSFT daily stock prices'
-fileName = '2_sacf_msft'
-aapl_sacf = sacf(msft_stock['MICROSOFT'], input_lags, graphTitle, fileName)
+    graphTitle = 'MICROSOFT stock time series'
+    fileName = '2_msft'
+    samplePlot(msft_stock, part1Data['DATE'], graphTitle, fileName)
+
+    input_lags = 12
+
+    graphTitle = 'Sample ACF of AAPL daily stock prices'
+    fileName = '2_sacf_aapl'
+    aapl_sacf = sacf(aapl_stock['APPLE'], input_lags, graphTitle, fileName)
+
+    graphTitle = 'Sample ACF of MSFT daily stock prices'
+    fileName = '2_sacf_msft'
+    msft_sacf = sacf(msft_stock['MICROSOFT'], input_lags, graphTitle, fileName)
 
 # Question 3
 
@@ -297,82 +299,87 @@ def getBestP(input_list):
     final_p = input_list.index(np.min(input_list)) + 1
     return min_value, final_p
 
-stock_list = part1Data.columns.tolist()
-stock_list.pop(0)
-
-stock_df = pd.DataFrame(columns=['Stock_ID','Order of p', 'ADF', 'Decision'])
-
-for sNumber, stock in enumerate(stock_list):
-    max_p = 12
-    hat_beta_list = []
-    hat_residuals_list = []
-    se_beta_list = []
-    bic_list = []
-
-    # print(f'{stock}:')
-
-    # estimate with a maximum p up to 12 lags
-    for iterateP in range(1, max_p+1):
-        # estimate an AR(p) model with intercept for the given data
-        matrix_X, hat_beta, hat_y, hat_residuals = runRegressionModel_AR(part1Data[stock], iterateP)
-        
-        estimate_SE = getStandardError(matrix_X, hat_residuals)
-        se_beta_list.append(estimate_SE)
-        
-        lengthOfSeries = len(part1Data[stock])
-        k = iterateP + 1
-        
-        this_bic = getBIC(lengthOfSeries, k, hat_residuals.squeeze())
-        hat_beta_list.append(hat_beta)
-        hat_residuals_list.append(hat_residuals)
-        bic_list.append(float(this_bic))
-
-    # Use BIC for model selection
-    min_bic, final_p = getBestP(bic_list)
-    final_beta = hat_beta_list[final_p - 1]
-    final_residuals = hat_residuals_list[final_p - 1]
-    final_se = se_beta_list[final_p - 1]
-
-    # report the result of estimated coefficients
-    coef_df = pd.DataFrame()
-    coef_df['coef'] = final_beta
-    # print('The results of estimated coefficients for AR(p) model:')
-    # print(coef_df)
-
-    # report the result of BICs
-    p_df = pd.DataFrame()
-    p_df['BIC'] = bic_list
-    # print('The results of BIC for each AR(p):')
-    # print(p_df)
-
-    # print(f'The final estimate of (p) is {final_p} with the lowest value of the information criterion which is {min_bic}.')
+def adf_test(input_alpha, input_adf, boolean_intercept):
+    # DF critical Value without intercept at significance level = 0.1
+    criticalValue_withoutIntercept = -1.62
     
-    def adf_test(input_alpha, input_adf, boolean_intercept):
-        # DF critical Value without intercept at significance level = 0.1
-        criticalValue_withoutIntercept = -1.62
-        
-        # DF critical Value with intercept at significance level = 0.1
-        criticalValue_withIntercept = -2.57
-        
-        if input_adf < criticalValue_withoutIntercept:
-            result = 'Reject the null'
-            # print(f'{result}.')
-            return result
-        else:
-            result = 'Do not reject'
-            # print(f'{result}.')
-            return result
+    # DF critical Value with intercept at significance level = 0.1
+    criticalValue_withIntercept = -2.57
     
-    # compute the ADF test statistic under the null
-    adf_statistic = (np.sum(final_beta.squeeze()) - 1) / (np.sum(final_se))
-    # print(f'ADF test statistic: {adf_statistic}')
+    if input_adf < criticalValue_withoutIntercept:
+        result = 'Reject the null'
+        # print(f'{result}.')
+        return result
+    else:
+        result = 'Do not reject'
+        # print(f'{result}.')
+        return result
 
-    decision = adf_test(0.1, adf_statistic, False)
+def partI_question3():
+    stock_list = part1Data.columns.tolist()
+    stock_list.pop(0)
+
+    stock_df = pd.DataFrame(columns=['Stock_ID','Order of p', 'ADF', 'Decision'])
+
+    for sNumber, stock in enumerate(stock_list):
+        max_p = 12
+        hat_beta_list = []
+        hat_residuals_list = []
+        se_beta_list = []
+        bic_list = []
+
+        # print(f'{stock}:')
+
+        # estimate with a maximum p up to 12 lags
+        for iterateP in range(1, max_p+1):
+            # estimate an AR(p) model with intercept for the given data
+            matrix_X, hat_beta, hat_y, hat_residuals = runRegressionModel_AR(part1Data[stock], iterateP)
+            
+            estimate_SE = getStandardError(matrix_X, hat_residuals)
+            se_beta_list.append(estimate_SE)
+            
+            lengthOfSeries = len(part1Data[stock])
+            k = iterateP + 1
+            
+            this_bic = getBIC(lengthOfSeries, k, hat_residuals.squeeze())
+            hat_beta_list.append(hat_beta)
+            hat_residuals_list.append(hat_residuals)
+            bic_list.append(float(this_bic))
+
+        # Use BIC for model selection
+        min_bic, final_p = getBestP(bic_list)
+        final_beta = hat_beta_list[final_p - 1]
+        final_residuals = hat_residuals_list[final_p - 1]
+        final_se = se_beta_list[final_p - 1]
+
+        # report the result of estimated coefficients
+        coef_df = pd.DataFrame()
+        coef_df['coef'] = final_beta
+        # print('The results of estimated coefficients for AR(p) model:')
+        # print(coef_df)
+
+        # report the result of BICs
+        p_df = pd.DataFrame()
+        p_df['BIC'] = bic_list
+        # print('The results of BIC for each AR(p):')
+        # print(p_df)
+
+        # print(f'The final estimate of (p) is {final_p} with the lowest value of the information criterion which is {min_bic}.')
+        
+        # compute the ADF test statistic under the null
+        adf_statistic = (np.sum(final_beta.squeeze()) - 1) / (np.sum(final_se))
+        # print(f'ADF test statistic: {adf_statistic}')
+
+        decision = adf_test(0.1, adf_statistic, False)
+        
+        stock_df.loc[sNumber] = [stock, final_p, adf_statistic, decision]
     
-    stock_df.loc[sNumber] = [stock, final_p, adf_statistic, decision]
-  
-stock_df = stock_df.set_index('Stock_ID')  
-print(stock_df)
+    stock_df = stock_df.set_index('Stock_ID')  
+    print(stock_df)
+    
+partI_question1()
+partI_question2()
+partI_question3()
 
 '''
 Part II: Cointegration and Error Correction Models
@@ -394,7 +401,7 @@ def monteCarlo_Cointegrated(input_B, input_t, input_phi, input_corr):
         this_x_list.append(0)
         this_y_list = []
 
-        for j in range(1, time+1):
+        for j in range(1, input_t+1):
             x_t = input_phi * this_x_list[j-1] + v_t[j]
             this_x_list.append(x_t)
             y_t = input_corr * this_x_list[j] + w_t[j]
@@ -417,57 +424,102 @@ def monteCarlo_Cointegrated(input_B, input_t, input_phi, input_corr):
     
     return this_beta_list, this_t_list, this_RSquare_list, this_lambda_list
 
-phi_list = [1, 0.5, 0.25]
+def partII_question1():
+    time_list = [100, 500, 1000]
+    phi_list = [1, 0.5, 0.25]
+    numberOfSimulations_B = 5000
 
-for phi in phi_list:
-    beta_x_list = []
-    beta_density_list = []
-    t_x_list = [] 
-    t_density_list = []
-    rSquare_x_list = []
-    rSquare_density_list = []
-    
-    lambda_x_list = []
-    lambda_density_list = []
-    
-    for time in time_list:
-        corr = 0.5
+    for phi in phi_list:
+        beta_x_list = []
+        beta_density_list = []
+        t_x_list = [] 
+        t_density_list = []
+        rSquare_x_list = []
+        rSquare_density_list = []
         
-        this_beta_list, this_t_list, this_RSquare_list, this_lambda_list = monteCarlo_Cointegrated(numberOfSimulations_B, time, phi, corr)
+        lambda_x_list = []
+        lambda_density_list = []
+        
+        for time in time_list:
+            corr = 0.5
             
-        beta_x, beta_density = getKernelDensity(this_beta_list)
-        beta_x_list.append(beta_x)
-        beta_density_list.append(beta_density)
+            this_beta_list, this_t_list, this_RSquare_list, this_lambda_list = monteCarlo_Cointegrated(numberOfSimulations_B, time, phi, corr)
+                
+            beta_x, beta_density = getKernelDensity(this_beta_list)
+            beta_x_list.append(beta_x)
+            beta_density_list.append(beta_density)
+            
+            t_x, t_density = getKernelDensity(this_t_list)
+            t_x_list.append(t_x)
+            t_density_list.append(t_density)
+            
+            rSquare_x, rSquare_density = getKernelDensity(this_RSquare_list)
+            rSquare_x_list.append(rSquare_x)
+            rSquare_density_list.append(rSquare_density)
         
-        t_x, t_density = getKernelDensity(this_t_list)
-        t_x_list.append(t_x)
-        t_density_list.append(t_density)
+            lambda_x, lambda_density = getKernelDensity(this_lambda_list)
+            lambda_x_list.append(lambda_x)
+            lambda_density_list.append(lambda_density)
         
-        rSquare_x, rSquare_density = getKernelDensity(this_RSquare_list)
-        rSquare_x_list.append(rSquare_x)
-        rSquare_density_list.append(rSquare_density)
-    
-        lambda_x, lambda_density = getKernelDensity(this_lambda_list)
-        lambda_x_list.append(lambda_x)
-        lambda_density_list.append(lambda_density)
-    
-    if phi == 1:
-        graphTitle = f'Distribution of Estimated β with cointegrating vector (1,{-corr})'
-        fileName = f'5_MC_pdf_beta_phi_{phi}'
-        xName = 'beta'
-        distributionPlot(beta_x_list, beta_density_list, time_list, xName, graphTitle, fileName)
+        if phi == 1:
+            graphTitle = f'Distribution of Estimated β with cointegrating vector (1,{-corr})'
+            fileName = f'5_MC_pdf_beta_phi_{phi}'
+            xName = 'beta'
+            distributionPlot(beta_x_list, beta_density_list, time_list, xName, graphTitle, fileName)
 
-        graphTitle = f'Distribution of Estimated t-statistics with cointegration vector (1,{-corr})'
-        fileName = f'5_MC_pdf_t_phi_{phi}'
-        xName = 't'
-        distributionPlot(t_x_list, t_density_list, time_list, xName, graphTitle, fileName)
+            graphTitle = f'Distribution of Estimated t-statistics with cointegration vector (1,{-corr})'
+            fileName = f'5_MC_pdf_t_phi_{phi}'
+            xName = 't'
+            distributionPlot(t_x_list, t_density_list, time_list, xName, graphTitle, fileName)
 
-        graphTitle = f'Distribution of Estimated R^2 with cointegration vector (1,{-corr})'
-        fileName = f'5_MC_pdf_RSquare_phi_{phi}'
-        xName = 'R^2'
-        distributionPlot(rSquare_x_list, rSquare_density_list, time_list, xName, graphTitle, fileName)
+            graphTitle = f'Distribution of Estimated R^2 with cointegration vector (1,{-corr})'
+            fileName = f'5_MC_pdf_RSquare_phi_{phi}'
+            xName = 'R^2'
+            distributionPlot(rSquare_x_list, rSquare_density_list, time_list, xName, graphTitle, fileName)
+        
+        graphTitle = f'Distribution of Estimated λ with ɸ = {phi}'
+        fileName = f'5_MC_pdf_lambda_phi_{phi}'
+        xName = 'lambda'
+        distributionPlot(lambda_x_list, lambda_density_list, time_list, xName, graphTitle, fileName)
+
+quarterly_name = part2Data['obs']
+aggregateConsumption = part2Data['CONS']
+aggregateIncome = part2Data['INC']
+fourth_quarter_name = [quarter for quarter in quarterly_name if 'Q4' in quarter]
+
+def partII_question2():    
+    # Plot the graphs
+    graphTitle = 'The quarterly aggregate consumption and aggregate income in the Netherlands'
+    fileName = '6_cons_inc'
+
+    plt.figure(figsize=(10,6))    
+    plt.plot(quarterly_name, aggregateConsumption, 
+            linewidth = 1, color = 'green', label='Aggregate consumption')
+    plt.plot(quarterly_name, aggregateIncome, 
+            linewidth = 1, color = 'blue', label='Aggregate income')
+    plt.axhline(0, color='black', linestyle='--', linewidth=1)
+    plt.title(graphTitle, fontweight='bold')
+    plt.xticks(quarterly_name, minor=True)
+    plt.xticks(fourth_quarter_name, minor=False, rotation=45)
+    plt.grid(True, axis='x', which='minor', 
+            linestyle='--', linewidth=0.5, color='grey')
+    plt.grid(True, axis='x', which='major', 
+            linestyle='--', linewidth=0.8, color='black')
+    plt.xlabel('Time')
+    plt.ylabel('Euros')
+    plt.legend()
+    plt.savefig(f'../3/figures/{fileName}.jpeg', dpi=300)
+    plt.show()
     
-    graphTitle = f'Distribution of Estimated λ with ɸ = {phi}'
-    fileName = f'5_MC_pdf_lambda_phi_{phi}'
-    xName = 'lambda'
-    distributionPlot(lambda_x_list, lambda_density_list, time_list, xName, graphTitle, fileName)
+    input_lags = 12
+
+    graphTitle = 'Sample ACF of Aggregate Comsumption'
+    fileName = '6_sacf_aggCons'
+    aggregateConsumption_sacf = sacf(aggregateConsumption, input_lags, graphTitle, fileName)
+
+    graphTitle = 'Sample ACF of Aggregate Income'
+    fileName = '6_sacf_aggInc'
+    aggregateIncome_sacf = sacf(aggregateIncome, input_lags, graphTitle, fileName)
+
+partII_question1()
+partII_question2()
